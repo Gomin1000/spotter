@@ -25,4 +25,5 @@ plus the page URL and title. The app receives it as a `{ type: "spotter:problem"
 ## Notes
 
 - The app URL is `APP_URL` at the top of `sidepanel.js` (default `http://localhost:3000/dev`). Change it to the deployed URL or `/` for the main page.
-- `activeTab` only gives access to a tab after you click the Spotter toolbar icon on it. If **Read this page** says it can't read the page, click the icon on that tab again. It can't read `chrome://` pages or the Chrome Web Store.
+- Codeforces, LeetCode and open.kattis.com are in `host_permissions`, so they always work. Other sites use `activeTab`, which only grants access after you click the Spotter toolbar icon on that tab; if reading fails there, click the icon on that tab and try again. Chrome never allows `chrome://` pages or the Chrome Web Store.
+- Status line: "Reading page…" while working, then green "✓ Read: <title>" when the app confirms, or red "✗ <reason>".

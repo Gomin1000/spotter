@@ -29,6 +29,7 @@ export default function DevPage() {
   const [busy, setBusy] = useState(false);
   const [output, setOutput] = useState("");
   const [pasted, setPasted] = useState<string | null>(null);
+  const [loadedFrom, setLoadedFrom] = useState<string | null>(null);
 
   async function run(label: string, fn: () => Promise<unknown>) {
     setBusy(true);
@@ -85,6 +86,7 @@ export default function DevPage() {
         setProblem(res.problem);
         setHints([]);
         setRung(1);
+        setLoadedFrom(page.title || page.url || res.problem.title);
       }
       setOutput(`extension: ${page.url}
 ${JSON.stringify(res, null, 2)}`);
@@ -101,6 +103,7 @@ ${message}`);
       const res = await readProblem(image ? { image_base64: image } : { text });
       if (res.found_problem && res.problem) {
         setProblem(res.problem);
+        setLoadedFrom(null);
         setHints([]);
       }
       return res;
@@ -186,6 +189,9 @@ ${message}`);
       <p className="text-sm">
         Problem: {problem ? problem.title : "(none, getHint uses MOCK_PROBLEM)"} · hints so far: {hints.length}
       </p>
+      {loadedFrom && (
+        <p className="text-sm font-semibold text-green-600">Loaded from page: {loadedFrom}</p>
+      )}
 
       <pre className="border rounded p-3 text-xs whitespace-pre-wrap min-h-32">{output}</pre>
     </main>

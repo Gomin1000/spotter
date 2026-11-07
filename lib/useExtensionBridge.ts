@@ -25,6 +25,14 @@ interface ProblemMessage {
   title?: string;
 }
 
+/** Sent back to the extension after readProblem() finishes. */
+export interface ReadResultMessage {
+  type: "spotter:read-result";
+  ok: boolean;
+  title: string;
+  message: string;
+}
+
 function isProblemMessage(data: unknown): data is ProblemMessage {
   if (typeof data !== "object" || data === null) return false;
   const d = data as Record<string, unknown>;
@@ -45,12 +53,25 @@ export function useExtensionBridge(handlers: ExtensionBridgeHandlers): void {
         url: String(e.data.url ?? ""),
         title: String(e.data.title ?? ""),
       };
+      // Tell the side panel how it went: { type: "spotter:read-result", ok, title, message }.
+      const source = e.source as Window | null;
+      const origin = e.origin;
+      const reply = (result: Omit<ReadResultMessage, "type">) =>
+        source?.postMessage({ type: "spotter:read-result", ...result } satisfies ReadResultMessage, origin);
+
       ref.current.onStart?.(page);
       try {
         const res = await readProblem({ text: e.data.text.slice(0, 20000) });
         ref.current.onResult(res, page);
+        reply(
+          res.found_problem && res.problem
+            ? { ok: true, title: res.problem.title, message: res.message }
+            : { ok: false, title: "", message: res.message || "No problem found on that page." },
+        );
       } catch {
-        ref.current.onError?.("Couldn't read that page. Try again, or paste the problem text.");
+        const message = "Couldn't read that page. Try again, or paste the problem text.";
+        ref.current.onError?.(message);
+        reply({ ok: false, title: "", message });
       }
     }
     window.addEventListener("message", onMessage);

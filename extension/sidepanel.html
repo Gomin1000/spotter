@@ -9,7 +9,9 @@
       #bar { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #333; }
       #read { padding: 4px 10px; border: 1px solid #ff8c00; border-radius: 4px; background: #ff8c00; color: #111; font-weight: 600; cursor: pointer; }
       #read:disabled { opacity: 0.6; cursor: default; }
-      #status { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aaa; }
+      #status { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #aaa; }
+      #status.ok { color: #4ade80; }
+      #status.error { color: #f87171; }
       #app { flex: 1; width: 100%; border: 0; background: #fff; }
     </style>
   </head>

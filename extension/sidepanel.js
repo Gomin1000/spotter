@@ -9,10 +9,31 @@ const status = document.getElementById("status");
 
 frame.src = APP_URL;
 
-function setStatus(text) {
+const REPLY_TIMEOUT_MS = 60000;
+let replyTimer = null;
+
+// kind: "working" | "ok" | "error"
+function setStatus(text, kind = "working") {
   status.textContent = text;
   status.title = text;
+  status.className = kind;
 }
+
+function finish(text, kind) {
+  clearTimeout(replyTimer);
+  replyTimer = null;
+  setStatus(text, kind);
+  button.disabled = false;
+}
+
+// The web app replies { type: "spotter:read-result", ok, title, message } after readProblem().
+window.addEventListener("message", (e) => {
+  if (e.origin !== APP_ORIGIN || e.source !== frame.contentWindow) return;
+  const d = e.data;
+  if (!d || d.type !== "spotter:read-result") return;
+  if (d.ok) finish(`✓ Read: ${d.title || "problem"}`, "ok");
+  else finish(`✗ ${d.message || "No problem found on that page."}`, "error");
+});
 
 // Runs inside the active tab. Must be self-contained (no outer variables).
 function extractProblem(maxChars) {
@@ -38,7 +59,7 @@ function extractProblem(maxChars) {
 
 button.addEventListener("click", async () => {
   button.disabled = true;
-  setStatus("Reading the page…");
+  setStatus("Reading page…");
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error("No active tab found.");
@@ -53,16 +74,13 @@ button.addEventListener("click", async () => {
       { type: "spotter:problem", text: data.text, url: data.url, title: data.title },
       APP_ORIGIN,
     );
-    setStatus(`Sent: ${data.title || data.url}`);
+    // Stay on "Reading page…" until the app replies.
+    replyTimer = setTimeout(
+      () => finish("✗ No reply from Spotter. Is the app running at " + APP_ORIGIN + "?", "error"),
+      REPLY_TIMEOUT_MS,
+    );
   } catch (error) {
     console.error("Spotter: read failed", error);
-    const msg = String(error?.message || error);
-    setStatus(
-      /cannot access|permission|chrome:\/\//i.test(msg)
-        ? "Can't read this page. Click the Spotter toolbar icon on the problem tab, then try again."
-        : msg,
-    );
-  } finally {
-    button.disabled = false;
+    finish(`✗ ${error?.message || String(error)}`, "error");
   }
 });
