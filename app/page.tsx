@@ -223,7 +223,7 @@ export default function Home() {
   const watchingStatus = watcher.isWatching ? watcher.status : null;
   let pose: MascotPose = "idle";
   if (refused) pose = "no-free-reps";
-  else if (watchingStatus === "distracted") pose = "side-eye";
+  else if (watchingStatus === "distracted") pose = watcher.pose === "no-free-reps" ? "no-free-reps" : "side-eye";
   else if (solvedWith != null) pose = "flex";
   else if (hintBusy || watchingStatus === "stuck" || lastFromHint) pose = "spotting";
 
