@@ -1,13 +1,38 @@
 // Spotter side panel: hosts the web app in an iframe and sends it the problem text.
-const APP_URL = "http://localhost:3000";
-const APP_ORIGIN = new URL(APP_URL).origin;
+// Works with any extension ID (unpacked IDs differ per computer): the app only checks
+// that messages come from a chrome-extension:// origin.
+const PROD_URL = "https://fallhacks-2026.vercel.app";
+const DEV_URL = "http://localhost:3000";
+const STORAGE_KEY = "useLocalhost";
 const MAX_CHARS = 20000;
 
 const frame = document.getElementById("app");
 const button = document.getElementById("read");
 const status = document.getElementById("status");
+const devToggle = document.getElementById("dev");
 
-frame.src = APP_URL;
+// Origin of whichever app URL is loaded; used as the postMessage targetOrigin.
+let appOrigin = new URL(PROD_URL).origin;
+
+function loadApp(useLocalhost) {
+  const url = useLocalhost ? DEV_URL : PROD_URL;
+  appOrigin = new URL(url).origin;
+  devToggle.checked = useLocalhost;
+  frame.src = url;
+  setStatus("");
+}
+
+chrome.storage.local
+  .get(STORAGE_KEY)
+  .then((data) => loadApp(data[STORAGE_KEY] === true))
+  .catch(() => loadApp(false));
+
+devToggle.addEventListener("change", () => {
+  const on = devToggle.checked;
+  chrome.storage.local.set({ [STORAGE_KEY]: on }).catch(() => {});
+  finish("", "working");
+  loadApp(on);
+});
 
 const REPLY_TIMEOUT_MS = 60000;
 let replyTimer = null;
@@ -28,7 +53,7 @@ function finish(text, kind) {
 
 // The web app replies { type: "spotter:read-result", ok, title, message } after readProblem().
 window.addEventListener("message", (e) => {
-  if (e.origin !== APP_ORIGIN || e.source !== frame.contentWindow) return;
+  if (e.origin !== appOrigin || e.source !== frame.contentWindow) return;
   const d = e.data;
   if (!d || d.type !== "spotter:read-result") return;
   if (d.ok) finish(`✓ Read: ${d.title || "problem"}`, "ok");
@@ -72,11 +97,11 @@ button.addEventListener("click", async () => {
     if (!data?.text) throw new Error("That page has no readable text.");
     frame.contentWindow.postMessage(
       { type: "spotter:problem", text: data.text, url: data.url, title: data.title },
-      APP_ORIGIN,
+      appOrigin,
     );
     // Stay on "Reading page…" until the app replies.
     replyTimer = setTimeout(
-      () => finish("✗ No reply from Spotter. Is the app running at " + APP_ORIGIN + "?", "error"),
+      () => finish("✗ No reply from Spotter at " + appOrigin + ". Is it reachable?", "error"),
       REPLY_TIMEOUT_MS,
     );
   } catch (error) {

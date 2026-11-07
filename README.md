@@ -1,3 +1,19 @@
+# Spotter
+
+Your competitive-programming spotter: hints one rung at a time, never the full solution.
+Live at **https://fallhacks-2026.vercel.app** (install guide: https://fallhacks-2026.vercel.app/install).
+
+## Install the Chrome extension
+
+1. Download [spotter-extension.zip](https://fallhacks-2026.vercel.app/spotter-extension.zip) and unzip it into a folder you'll keep.
+2. Open `chrome://extensions` (paste it in the address bar) and turn on **Developer mode** (top right).
+3. Click **Load unpacked** and pick the unzipped folder (the one with `manifest.json` inside).
+4. Pin Spotter from the puzzle-piece menu, open a Codeforces or LeetCode problem, and click the Spotter icon. Then click **Read this page**.
+
+The website also works without the extension: open it and paste a screenshot (Ctrl+V) or the problem text.
+
+After changing anything in `extension/`, rebuild the download with `npm run zip-extension` and commit `public/spotter-extension.zip`.
+
 # Hackathon agent board
 
 ## Run locally

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   getHint,
@@ -179,7 +180,9 @@ export default function Home() {
             <span className="text-[#5eead4]">Spot</span>
             <span className="text-[#f472b6]">ter</span>
           </h1>
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6b7aa6]">No free reps</span>
+          <Link href="/install" className="text-xs font-semibold text-[#94a3c8] hover:text-[#5eead4]">
+            Get the Chrome extension
+          </Link>
         </header>
 
         {/* Pinned so side-eye and refusals stay visible while scrolled down to the hints. */}

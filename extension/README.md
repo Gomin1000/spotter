@@ -4,11 +4,12 @@ A thin wrapper around the Spotter web app. It opens Spotter in Chrome's side pan
 
 ## Load it
 
-1. Start the web app: `npm run dev` in the repo root (it must be on http://localhost:3000).
-2. Open `chrome://extensions`.
-3. Turn on **Developer mode** (top right).
-4. Click **Load unpacked** and pick this `extension/` folder.
-5. Pin Spotter from the puzzle-piece menu, then click its icon to open the side panel.
+1. Open `chrome://extensions`.
+2. Turn on **Developer mode** (top right).
+3. Click **Load unpacked** and pick this folder (the one with `manifest.json`).
+4. Pin Spotter from the puzzle-piece menu, then click its icon to open the side panel.
+
+It loads the deployed app (https://fallhacks-2026.vercel.app). To use your local `npm run dev` instead, tick **Dev: use localhost** at the bottom of the panel (saved in `chrome.storage.local`).
 
 After editing files here, click the reload icon on the Spotter card in `chrome://extensions` and reopen the panel.
 
@@ -24,6 +25,8 @@ plus the page URL and title. The app receives it as a `{ type: "spotter:problem"
 
 ## Notes
 
-- The app URL is `APP_URL` at the top of `sidepanel.js` (default `http://localhost:3000/dev`). Change it to the deployed URL or `/` for the main page.
+- App URLs are `PROD_URL` and `DEV_URL` at the top of `sidepanel.js`. The postMessage target origin follows whichever one is loaded.
+- Nothing depends on the extension ID (unpacked IDs differ per computer); the app accepts any `chrome-extension://` sender.
+- The download on /install is `public/spotter-extension.zip`. Rebuild it with `npm run zip-extension` after changing files here.
 - Codeforces, LeetCode and open.kattis.com are in `host_permissions`, so they always work. Other sites use `activeTab`, which only grants access after you click the Spotter toolbar icon on that tab; if reading fails there, click the icon on that tab and try again. Chrome never allows `chrome://` pages or the Chrome Web Store.
 - Status line: "Reading page…" while working, then green "✓ Read: <title>" when the app confirms, or red "✗ <reason>".
