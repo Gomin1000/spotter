@@ -2,6 +2,9 @@ import type { Part } from "@google/genai";
 import type { MascotPose, WatchRequest, WatchResponse, WatchStatus } from "@/lib/contract";
 import { generateJson, ThinkingLevel } from "@/lib/gemini";
 
+// Allow slow Gemini calls on Vercel (seconds).
+export const maxDuration = 60;
+
 const SYSTEM = `You are Spotter, a buff gym-bro robot coach watching a competitive programmer's screen through periodic screenshots. Classify what the user is doing in the NEWEST frame (the last image), using the earlier frame only for comparison.
 Statuses:
 - focused: a coding problem, code editor, terminal, or online-judge page is visible and the user is working on it (code changed, different part of the problem, new submission, etc.).

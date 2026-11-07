@@ -2,6 +2,9 @@ import type { Part } from "@google/genai";
 import type { Problem, ReadProblemRequest, ReadProblemResponse } from "@/lib/contract";
 import { generateJson, ThinkingLevel } from "@/lib/gemini";
 
+// Allow slow Gemini calls on Vercel (seconds).
+export const maxDuration = 60;
+
 const SYSTEM = `You extract competitive-programming problems from a screenshot or pasted text.
 Rules:
 - Only report a problem that is actually visible in the input. Never invent, guess, or "complete" a problem from memory.

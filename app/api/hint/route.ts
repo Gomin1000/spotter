@@ -2,6 +2,9 @@ import type { HintRequest, HintResponse, MascotPose, Rung } from "@/lib/contract
 import { RUNG_NAMES } from "@/lib/contract";
 import { generateJson, ThinkingLevel } from "@/lib/gemini";
 
+// Allow slow Gemini calls on Vercel (seconds).
+export const maxDuration = 60;
+
 const RUNG_RULES: Record<Rung, string> = {
   1: "Rung 1 Warm-up: give ONE observation the user should notice (about the constraints, the samples, or the structure). Do NOT name any algorithm, technique, or data structure.",
   2: "Rung 2 Form check: name the technique or data structure that fits, and say briefly WHY it fits. Do not describe the full approach.",
