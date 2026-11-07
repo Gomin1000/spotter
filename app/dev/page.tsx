@@ -14,6 +14,7 @@ import {
   type Rung,
 } from "@/lib/api";
 import { grabScreenOnce, resizeToJpegBase64 } from "@/lib/image";
+import { usePasteImage } from "@/lib/usePasteImage";
 
 export default function DevPage() {
   const [imageB64, setImageB64] = useState<string | null>(null);
@@ -26,6 +27,7 @@ export default function DevPage() {
   const [frames, setFrames] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [output, setOutput] = useState("");
+  const [pasted, setPasted] = useState<string | null>(null);
 
   async function run(label: string, fn: () => Promise<unknown>) {
     setBusy(true);
@@ -44,6 +46,7 @@ export default function DevPage() {
   async function onFile(file: File | undefined) {
     if (!file) return;
     setImageB64(await resizeToJpegBase64(file));
+    setPasted(null);
   }
 
   function onGrab() {
@@ -59,9 +62,19 @@ export default function DevPage() {
     });
   }
 
-  function onRead() {
+  // Ctrl+V or drop a screenshot anywhere: load it and read it right away.
+  usePasteImage(
+    (b64, source) => {
+      setImageB64(b64);
+      setPasted(source === "paste" ? "Screenshot pasted" : "Screenshot dropped");
+      onRead(b64);
+    },
+    (message) => setOutput(message),
+  );
+
+  function onRead(image: string | null = imageB64) {
     run("readProblem", async () => {
-      const res = await readProblem(imageB64 ? { image_base64: imageB64 } : { text });
+      const res = await readProblem(image ? { image_base64: image } : { text });
       if (res.found_problem && res.problem) {
         setProblem(res.problem);
         setHints([]);
@@ -108,20 +121,24 @@ export default function DevPage() {
 
       <section className="flex flex-col gap-2">
         <h2 className="font-semibold">Input</h2>
+        <p className="text-sm">Tip: Win+Shift+S then Ctrl+V, or drop an image anywhere on the page.</p>
         <input type="file" accept="image/*" onChange={(e) => onFile(e.target.files?.[0])} />
         <div className="flex gap-2 items-center">
           <button className={btn} disabled={busy} onClick={onGrab}>Read my screen</button>
           {imageB64 && (
             <>
               <span className="text-sm">image: {Math.round((imageB64.length * 3) / 4 / 1024)} KB</span>
-              <button className={btn} onClick={() => setImageB64(null)}>Clear image</button>
+              <button className={btn} onClick={() => { setImageB64(null); setPasted(null); }}>Clear image</button>
             </>
           )}
           <span className="text-sm">watch frames: {frames.length}</span>
         </div>
         {imageB64 && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={`data:image/jpeg;base64,${imageB64}`} alt="captured" className="max-w-xs border" />
+          <figure className="flex flex-col gap-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`data:image/jpeg;base64,${imageB64}`} alt="captured" className="max-w-48 border" />
+            {pasted && <figcaption className="text-sm">{pasted}</figcaption>}
+          </figure>
         )}
         <textarea className={box} rows={4} placeholder="Or paste problem text (used when no image)" value={text} onChange={(e) => setText(e.target.value)} />
         <textarea className={box} rows={3} placeholder="Optional code" value={code} onChange={(e) => setCode(e.target.value)} />
@@ -137,7 +154,7 @@ export default function DevPage() {
       </section>
 
       <section className="flex gap-2">
-        <button className={btn} disabled={busy} onClick={onRead}>readProblem()</button>
+        <button className={btn} disabled={busy} onClick={() => onRead()}>readProblem()</button>
         <button className={btn} disabled={busy} onClick={onHint}>getHint()</button>
         <button className={btn} disabled={busy} onClick={onWatch}>watch()</button>
       </section>
