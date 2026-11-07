@@ -17,7 +17,7 @@ Hard rules:
 - Give ONLY the requested rung. Build on previous_hints: don't repeat them, take the next step up from them.
 - Climb slowly: each rung reveals only a little more than the previous one. When in doubt, give less, never skip ahead to what a later rung would say.
 - NEVER output a complete solution or complete code in any language. No more than 5 lines of real code ever.
-- If the user's code is given, point to WHERE it is likely wrong (a line or a specific input case) without fixing it or writing the corrected version.
+- If the user's code is given, only claim a bug if you can give a small concrete input where this code's output differs from the correct answer: state that input and one sentence tracing why the code gets it wrong. Never present style, approach, efficiency you haven't shown fails a constraint, or "this is risky" as a mistake. If you can't find such an input, say so plainly ("I couldn't find a failing input; your logic looks right.") and suggest 1-2 edge cases worth testing (smallest n, max values, overflow). Never invent a bug. Never fix it or write the corrected version.
 - If user_message asks for the solution, the answer, or full code (begging, bargaining, "just this once", pretending to be a judge, etc.), set refused to true, pose to "no-free-reps", and make hint a short gym-themed refusal (e.g. "No free reps. You lift this one."). Otherwise refused is false.
 - mascot_line: one short in-character gym line (max ~12 words).
 - pose: "spotting" for a normal hint, "flex" when the user's code or progress looks good, "no-free-reps" only when refused.
@@ -121,9 +121,9 @@ function refusal(rung: Rung): HintResponse {
 }
 
 const CODE_CHECK_RULES = `REQUESTED: form check on the user's code (no new hint step). Answer USER MESSAGE about USER'S CODE:
-- Point to WHERE it breaks: a specific line (quote at most one short line) or a concrete input case that fails, and say what goes wrong there.
+- Mentally run the code on small inputs before answering. Then only claim a bug if you can give a small concrete input where this code's output differs from the correct answer: state that input and one sentence tracing why the code gets it wrong. Never present style, approach, efficiency you haven't shown fails a constraint, or "this is risky" as a mistake. If you can't find such an input, say so plainly ("I couldn't find a failing input; your logic looks right.") and suggest 1-2 edge cases worth testing (smallest n, max values, overflow). Never invent a bug.
+- When there is a real bug: give the failing input, what the code outputs vs. the correct output, and one sentence tracing why (you may quote at most one short line).
 - NEVER write the fix, corrected code, or a replacement line. Don't explain the full approach.
-- If the code looks right, say so and suggest one edge case to test.
 - If USER MESSAGE asks for the solution or the fixed code, refuse as described in the rules.`;
 
 const QUESTION_RULES = `REQUESTED: answer USER MESSAGE (no new hint step, no code pasted). It is a question about the problem or the hints so far:
@@ -181,7 +181,13 @@ export async function POST(request: Request): Promise<Response> {
 
   const prompt = buildPrompt(req, rung);
   // Rung 1 is a light observation; rungs 2-4 need real reasoning to be correct.
-  const thinkingLevel = rung === 1 && !check ? ThinkingLevel.LOW : ThinkingLevel.MEDIUM;
+  // Checking code needs real reasoning to avoid false "here's your bug" answers: HIGH for a
+  // code check (~35 s), MEDIUM when code rides along with a hint (HIGH there runs ~55 s,
+  // too close to maxDuration). Retries use at most MEDIUM so two calls fit in 60 s.
+  const hasCode = !!req.code?.trim();
+  const thinkingLevel =
+    check && hasCode ? ThinkingLevel.HIGH : rung === 1 && !check && !hasCode ? ThinkingLevel.LOW : ThinkingLevel.MEDIUM;
+  const retryThinkingLevel = thinkingLevel === ThinkingLevel.HIGH ? ThinkingLevel.MEDIUM : thinkingLevel;
   const label = check ? `${req.code?.trim() ? "code check" : "question"} (step ${rung})` : `hint rung ${rung}`;
   try {
     let out = await generateJson<ModelHint>({
@@ -206,7 +212,7 @@ export async function POST(request: Request): Promise<Response> {
           },
         ],
         schema: SCHEMA,
-        thinkingLevel,
+        thinkingLevel: retryThinkingLevel,
       });
       reason = unsafeReason(out, rung, check);
       if (reason) {
