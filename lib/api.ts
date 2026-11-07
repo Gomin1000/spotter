@@ -14,8 +14,8 @@ import {
 export * from "./contract";
 
 // Flip each to false once its route is live.
-export const MOCK_READ = true;
-export const MOCK_HINT = true;
+export const MOCK_READ = false;
+export const MOCK_HINT = false;
 export const MOCK_WATCH = true;
 
 const MOCK_DELAY_MS = 800;

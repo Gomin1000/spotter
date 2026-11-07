@@ -46,9 +46,13 @@ export default function DevPage() {
     setImageB64(await resizeToJpegBase64(file));
   }
 
-  async function onGrab() {
-    await run("grabScreenOnce", async () => {
-      const b64 = await grabScreenOnce();
+  function onGrab() {
+    // grabScreenOnce() must be called synchronously in the click handler (Firefox).
+    const grab = grabScreenOnce();
+    run("grabScreenOnce", async () => {
+      const res = await grab;
+      if (!res.ok) return res;
+      const b64 = res.image_base64;
       setImageB64(b64);
       setFrames((f) => [...f, b64].slice(-2));
       return { captured_kb: Math.round((b64.length * 3) / 4 / 1024) };

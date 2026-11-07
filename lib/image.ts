@@ -32,9 +32,36 @@ export function captureVideoFrame(video: HTMLVideoElement): string {
   return canvasToBase64(video, video.videoWidth, video.videoHeight);
 }
 
-/** Ask to share the screen, grab one frame (768 px JPEG base64), then stop sharing. */
-export async function grabScreenOnce(): Promise<string> {
-  const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+export type GrabResult = { ok: true; image_base64: string } | { ok: false; message: string };
+
+function grabErrorMessage(e: unknown): string {
+  const name = e instanceof DOMException ? e.name : "";
+  if (name === "NotAllowedError") return "Screen share was cancelled or blocked. Click again and pick a screen or window.";
+  if (name === "NotFoundError") return "No screen or window was available to share.";
+  if (typeof navigator !== "undefined" && !navigator.mediaDevices?.getDisplayMedia)
+    return "This browser can't share the screen. Upload a screenshot or paste the text instead.";
+  return "Couldn't grab the screen. Try again, or upload a screenshot instead.";
+}
+
+/**
+ * Ask to share the screen, grab one frame (768 px JPEG base64), then stop sharing.
+ * Call it directly from a click handler, before any await: getDisplayMedia() runs
+ * synchronously at the start so Firefox still sees the user gesture. Never throws.
+ */
+export function grabScreenOnce(): Promise<GrabResult> {
+  let streamPromise: Promise<MediaStream>;
+  try {
+    streamPromise = navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+  } catch (e) {
+    return Promise.resolve({ ok: false, message: grabErrorMessage(e) });
+  }
+  return captureFromStream(streamPromise).catch(
+    (e): GrabResult => ({ ok: false, message: grabErrorMessage(e) }),
+  );
+}
+
+async function captureFromStream(streamPromise: Promise<MediaStream>): Promise<GrabResult> {
+  const stream = await streamPromise;
   try {
     const video = document.createElement("video");
     video.muted = true;
@@ -48,9 +75,9 @@ export async function grabScreenOnce(): Promise<string> {
       );
     }
     await new Promise((r) => setTimeout(r, 300));
-    const b64 = captureVideoFrame(video);
+    const image_base64 = captureVideoFrame(video);
     video.srcObject = null;
-    return b64;
+    return { ok: true, image_base64 };
   } finally {
     stream.getTracks().forEach((t) => t.stop());
   }
