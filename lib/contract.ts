@@ -11,6 +11,8 @@ export interface Problem {
   constraints: string[];
   sample_input: string;
   sample_output: string;
+  /** Page the problem came from (set by useExtensionBridge). Used by /api/rating. */
+  source_url?: string;
 }
 
 /** Send exactly one of image_base64 (JPEG, max 768 px wide, no data: prefix) or text. */
@@ -69,6 +71,22 @@ export interface WatchResponse {
   reason: string;
   mascot_line: string;
   pose: MascotPose;
+}
+
+// ---------- Reveal weight (difficulty) ----------
+
+export interface RatingRequest {
+  problem: Problem;
+}
+
+export interface RatingResponse {
+  ok: boolean;
+  /** Codeforces-style rating (800-3500), or null if unknown. */
+  rating: number | null;
+  /** "codeforces" = official rating from the CF API; "estimate" = Spotter's guess. */
+  source: "codeforces" | "estimate";
+  confidence: "high" | "medium" | "low";
+  mascot_line: string;
 }
 
 // ---------- Mocks ----------

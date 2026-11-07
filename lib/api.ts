@@ -5,6 +5,8 @@ import {
   MOCK_WATCH_RESPONSE,
   type HintRequest,
   type HintResponse,
+  type RatingRequest,
+  type RatingResponse,
   type ReadProblemRequest,
   type ReadProblemResponse,
   type WatchRequest,
@@ -52,4 +54,8 @@ export function getHint(req: HintRequest): Promise<HintResponse> {
 export function watch(req: WatchRequest): Promise<WatchResponse> {
   if (MOCK_WATCH) return mock(MOCK_WATCH_RESPONSE);
   return post<WatchResponse>("/api/watch", req);
+}
+
+export function getRating(req: RatingRequest): Promise<RatingResponse> {
+  return post<RatingResponse>("/api/rating", req);
 }

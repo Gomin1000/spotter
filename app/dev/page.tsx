@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   getHint,
+  getRating,
   MOCK_HINT,
   MOCK_PROBLEM,
   MOCK_READ,
@@ -31,6 +32,7 @@ export default function DevPage() {
   const [output, setOutput] = useState("");
   const [pasted, setPasted] = useState<string | null>(null);
   const [loadedFrom, setLoadedFrom] = useState<string | null>(null);
+  const [sourceUrl, setSourceUrl] = useState("");
   const watcher = useScreenWatcher({ problemTitle: problem?.title });
 
   async function run(label: string, fn: () => Promise<unknown>) {
@@ -129,6 +131,13 @@ ${message}`);
     });
   }
 
+  function onRating() {
+    const base = problem ?? MOCK_PROBLEM;
+    run("getRating", () =>
+      getRating({ problem: sourceUrl.trim() ? { ...base, source_url: sourceUrl.trim() } : base }),
+    );
+  }
+
   function onWatch() {
     run("watch", () =>
       watch({
@@ -186,7 +195,14 @@ ${message}`);
         <button className={btn} disabled={busy} onClick={() => onRead()}>readProblem()</button>
         <button className={btn} disabled={busy} onClick={() => onHint()}>getHint()</button>
         <button className={btn} disabled={busy} onClick={onWatch}>watch()</button>
+        <button className={btn} disabled={busy} onClick={onRating}>Reveal weight</button>
       </section>
+      <input
+        className={box}
+        placeholder={`Optional source URL for Reveal weight${problem?.source_url ? ` (problem has ${problem.source_url})` : ""}, e.g. https://codeforces.com/problemset/problem/4/A`}
+        value={sourceUrl}
+        onChange={(e) => setSourceUrl(e.target.value)}
+      />
 
       <section className="flex flex-col gap-2 border rounded p-3">
         <h2 className="font-semibold">Watch mode (useScreenWatcher)</h2>

@@ -62,6 +62,8 @@ export function useExtensionBridge(handlers: ExtensionBridgeHandlers): void {
       ref.current.onStart?.(page);
       try {
         const res = await readProblem({ text: e.data.text.slice(0, 20000) });
+        // Keep the page URL so /api/rating can look up the official Codeforces rating.
+        if (res.problem && page.url) res.problem.source_url = page.url;
         ref.current.onResult(res, page);
         reply(
           res.found_problem && res.problem
