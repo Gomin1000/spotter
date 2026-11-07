@@ -25,6 +25,8 @@ interface Props {
 
 export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpotMe, onTalk, solvedWith, onSolved }: Props) {
   const [message, setMessage] = useState("");
+  // True while a Talk message is out as a code check (slow: about 30 s), so the wait says so.
+  const [checkPending, setCheckPending] = useState(false);
   const steps = hints.filter((h) => h.kind === "step").length;
   const done = steps >= 4;
   const next = Math.min(steps + 1, 4) as Rung;
@@ -33,7 +35,12 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
   async function send() {
     const m = message.trim();
     if (!m) return;
-    if (await onTalk(m)) setMessage("");
+    setCheckPending(checking);
+    try {
+      if (await onTalk(m)) setMessage("");
+    } finally {
+      setCheckPending(false);
+    }
   }
 
   return (
@@ -66,7 +73,16 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
             </span>
           </button>
         )}
-        {busy && <LoadingLine />}
+        {busy && (
+          <div className="flex flex-col gap-1">
+            {checkPending && (
+              <p className="font-mono text-[11px] font-black uppercase tracking-widest text-ink">
+                Checking your form carefully… about 30 s
+              </p>
+            )}
+            <LoadingLine />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-5">
