@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { RUNG_NAMES, type Rung } from "@/lib/api";
 import { LoadingLine } from "./LoadingLine";
-import { PLATE, btnOutline, input, label } from "./ui";
+import { PLATE, STEP_LABEL, btnPrimary, btnSecondary, divider, heading, input, label, sticker } from "./ui";
 
 /** One entry in the training log: an unlocked step, or an answer about the user's code. */
 export type GivenHint =
@@ -37,45 +37,42 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
   }
 
   return (
-    <section className="flex flex-col gap-8">
-      {hasProblem && (hints.length > 0 || solvedWith != null) && (
-        <div className="flex flex-col gap-7">
-          {hints.length > 0 && (
-            <ol className="flex flex-col gap-7" aria-label="Training log">
-              {hints.map((h, i) => (
-                h.kind === "check" ? <CheckEntry key={i} question={h.question} text={h.text} /> : <LogEntry key={i} hint={h} />
-              ))}
-            </ol>
+    <section className="flex flex-col gap-6">
+      {hints.length > 0 && (
+        <ol className="flex flex-col gap-5" aria-label="Training log">
+          {hints.map((h, i) =>
+            h.kind === "check" ? <CheckEntry key={i} question={h.question} text={h.text} /> : <StepEntry key={i} hint={h} />,
           )}
-          <Solved solvedWith={solvedWith} busy={busy} onSolved={onSolved} />
-        </div>
+        </ol>
       )}
 
-      <div className="flex flex-col gap-2">
+      {hasProblem && <Solved solvedWith={solvedWith} busy={busy} onSolved={onSolved} />}
+
+      <div className="flex flex-col gap-3">
         {done ? (
-          <p className="py-2 font-display text-2xl font-semibold leading-tight">That&apos;s every step. You&apos;ve got this.</p>
+          <div className={`${sticker} bg-mint-soft px-4 py-3 text-center`}>
+            <p className={`${heading} text-xl leading-tight`}>That&apos;s every step.</p>
+            <p className={`${label} mt-1 text-ink`}>You&apos;ve got this</p>
+          </div>
         ) : (
           <button
-            className="flex w-full flex-col items-center rounded-ui bg-chalk px-4 py-3 text-rubber transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+            className={`${btnPrimary} flex w-full flex-col items-center px-4 py-3`}
             disabled={!hasProblem || busy}
             onClick={onSpotMe}
           >
-            <span className="font-display text-2xl font-bold leading-none">Spot me</span>
-            <span className="mt-1 text-[13px]">
+            <span className={`${heading} text-[28px] leading-none`}>Spot me</span>
+            <span className="mt-1.5 font-mono text-[10px] font-bold uppercase tracking-widest">
               {hasProblem ? `Next: ${RUNG_NAMES[next]}` : "Load a problem first"}
             </span>
           </button>
         )}
         {busy && <LoadingLine />}
-        {hasProblem && hints.length === 0 && solvedWith == null && (
-          <Solved solvedWith={solvedWith} busy={busy} onSolved={onSolved} />
-        )}
       </div>
 
-      <div className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-5">
+        <label className="flex flex-col gap-2">
           <span className={label}>
-            Paste your code{code.trim() && <span className="text-dust/70"> ({code.split("\n").length} lines)</span>}
+            Paste your code{code.trim() && ` / ${code.split("\n").length} lines`}
           </span>
           <textarea
             className={`${input} h-28 resize-y font-mono text-xs leading-relaxed`}
@@ -87,7 +84,7 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
         </label>
 
         <form
-          className="flex flex-col gap-1.5"
+          className="flex flex-col gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             void send();
@@ -96,7 +93,7 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
           <label htmlFor="talk" className={label}>
             Talk to Spotter
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <input
               id="talk"
               className={input}
@@ -105,7 +102,7 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
               disabled={!hasProblem}
               onChange={(e) => setMessage(e.target.value)}
             />
-            <button className={btnOutline} type="submit" disabled={!hasProblem || busy || !message.trim()}>
+            <button className={btnSecondary} type="submit" disabled={!hasProblem || busy || !message.trim()}>
               Send
             </button>
           </div>
@@ -115,42 +112,58 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
   );
 }
 
-/** A reply about the user's code: an empty ring instead of a plate, since no step was unlocked. */
-function CheckEntry({ question, text }: { question: string; text: string }) {
+function Tag({ className, children }: { className: string; children: React.ReactNode }) {
   return (
-    <li className="grid grid-cols-[28px_1fr] gap-x-3">
-      <span aria-hidden className="mt-0.5 h-7 w-7 rounded-full border-2 border-dust/50" />
-      <div className="min-w-0">
-        <h3 className="font-display text-xl font-semibold leading-7">Code check</h3>
-        <p className="mt-0.5 text-sm text-dust">You asked: {question}</p>
-        <p className="mt-1 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
+    <span
+      aria-hidden
+      className={`shrink-0 rounded-ui border-2 border-ink px-2 py-1 font-mono text-[10px] font-black uppercase tracking-widest ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function StepEntry({ hint }: { hint: GivenHint }) {
+  const plate = PLATE[hint.rung];
+  return (
+    <li className={`${sticker} p-4`}>
+      <div className="flex items-start gap-3">
+        <Tag className={`${plate.bg} ${plate.text}`}>0{hint.rung}</Tag>
+        <div className="min-w-0">
+          <h3 className={`${heading} text-xl leading-none`}>
+            <span className="sr-only">Step {hint.rung}: </span>
+            {RUNG_NAMES[hint.rung]}
+          </h3>
+          <p className={`${label} mt-1`}>{STEP_LABEL[hint.rung]}</p>
+        </div>
+      </div>
+      <div className={`${divider} mt-3 pt-3`}>
+        {hint.rung === 4 ? (
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded-ui border-2 border-ink bg-paper p-3 font-mono text-xs leading-relaxed">
+            {hint.text}
+          </pre>
+        ) : (
+          <p className="whitespace-pre-wrap text-[15px] font-medium leading-relaxed">{hint.text}</p>
+        )}
       </div>
     </li>
   );
 }
 
-function LogEntry({ hint }: { hint: GivenHint }) {
-  const plate = PLATE[hint.rung];
+/** A reply about the user's code. It sits in the log but never loads a plate. */
+function CheckEntry({ question, text }: { question: string; text: string }) {
   return (
-    <li className="grid grid-cols-[28px_1fr] gap-x-3">
-      <span
-        aria-hidden
-        className={`mt-0.5 flex h-7 w-7 items-center justify-center rounded-full font-display text-base font-bold ${plate.bg} ${plate.text}`}
-      >
-        {hint.rung}
-      </span>
-      <div className="min-w-0">
-        <h3 className="font-display text-xl font-semibold leading-7">
-          <span className="sr-only">Step {hint.rung}: </span>
-          {RUNG_NAMES[hint.rung]}
-        </h3>
-        {hint.rung === 4 ? (
-          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-ui bg-mat p-3 font-mono text-xs leading-relaxed">
-            {hint.text}
-          </pre>
-        ) : (
-          <p className="mt-1 whitespace-pre-wrap text-[15px] leading-relaxed">{hint.text}</p>
-        )}
+    <li className={`${sticker} p-4`}>
+      <div className="flex items-start gap-3">
+        <Tag className="bg-white text-ink">Q</Tag>
+        <div className="min-w-0">
+          <h3 className={`${heading} text-xl leading-none`}>Code check</h3>
+          <p className={`${label} mt-1`}>Your question</p>
+        </div>
+      </div>
+      <div className={`${divider} mt-3 pt-3`}>
+        <p className="text-sm font-bold text-slate">&ldquo;{question}&rdquo;</p>
+        <p className="mt-2 whitespace-pre-wrap text-[15px] font-medium leading-relaxed">{text}</p>
       </div>
     </li>
   );
@@ -159,13 +172,16 @@ function LogEntry({ hint }: { hint: GivenHint }) {
 function Solved({ solvedWith, busy, onSolved }: { solvedWith: number | null; busy: boolean; onSolved: () => void }) {
   if (solvedWith != null) {
     return (
-      <p className="font-display text-xl font-semibold">
-        {solvedWith === 0 ? "Solved with no spots. All you." : `Solved with ${solvedWith} spot${solvedWith === 1 ? "" : "s"}.`}
-      </p>
+      <div className={`${sticker} bg-sun px-4 py-3`}>
+        <p className={`${heading} text-xl leading-none`}>
+          {solvedWith === 0 ? "Solved. No spots." : `Solved with ${solvedWith} spot${solvedWith === 1 ? "" : "s"}`}
+        </p>
+        <p className={`${label} mt-1.5 text-ink`}>{solvedWith === 0 ? "All you" : "Clean rep"}</p>
+      </div>
     );
   }
   return (
-    <button className={`${btnOutline} w-full py-2`} disabled={busy} onClick={onSolved}>
+    <button className={`${btnSecondary} w-full py-2.5`} disabled={busy} onClick={onSolved}>
       I solved it
     </button>
   );

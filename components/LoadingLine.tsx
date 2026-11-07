@@ -10,7 +10,7 @@ export function LoadingLine({ className = "" }: { className?: string }) {
     return () => clearInterval(id);
   }, []);
   return (
-    <p className={`text-sm text-dust ${className}`} role="status">
+    <p className={`font-mono text-[11px] font-bold uppercase tracking-widest text-slate ${className}`} role="status">
       {LOADING_LINES[i]}
     </p>
   );

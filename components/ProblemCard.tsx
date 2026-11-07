@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { getRating, type Problem, type RatingResponse } from "@/lib/api";
 import { LoadingLine } from "./LoadingLine";
-import { btnOutline, btnText, input, muted } from "./ui";
+import { btnSecondary, btnTag, divider, heading, input, label, sticker } from "./ui";
 import { ERROR_LINES } from "./voice";
 
 interface Props {
@@ -12,16 +12,23 @@ interface Props {
   reading: boolean;
   onReadText: (text: string) => void;
   onReadScreen: () => void;
-  /** Lets the section speak through the mascot. */
+  /** Lets the card speak through the mascot. */
   onLine: (line: string) => void;
+  /** True while "New problem" is open: the next read starts a fresh log even for the same problem. */
+  onNewProblemChange: (open: boolean) => void;
 }
 
-export function ProblemCard({ problem, loadedFrom, reading, onReadText, onReadScreen, onLine }: Props) {
+export function ProblemCard({ problem, loadedFrom, reading, onReadText, onReadScreen, onLine, onNewProblemChange }: Props) {
   const [text, setText] = useState("");
   const [showPaste, setShowPaste] = useState(false);
 
+  function setPaste(open: boolean) {
+    setShowPaste(open);
+    onNewProblemChange(open);
+  }
+
   return (
-    <section className="flex flex-col gap-3">
+    <section className={`${sticker} flex flex-col gap-3 p-4`}>
       {reading ? (
         <LoadingLine />
       ) : problem ? (
@@ -31,21 +38,22 @@ export function ProblemCard({ problem, loadedFrom, reading, onReadText, onReadSc
           loadedFrom={loadedFrom}
           onLine={onLine}
           pasteOpen={showPaste}
-          onTogglePaste={() => setShowPaste((s) => !s)}
+          onTogglePaste={() => setPaste(!showPaste)}
         />
       ) : (
         <>
-          <h2 className="font-display text-[28px] font-semibold leading-tight">What are we lifting today?</h2>
-          <p className={muted}>
+          <p className={label}>The problem</p>
+          <h2 className={`${heading} text-2xl leading-[0.95]`}>What are we lifting today?</h2>
+          <p className="text-sm font-medium text-slate">
             Open a problem and click Read this page, press{" "}
-            <kbd className="rounded-ui bg-mat px-1.5 py-0.5 font-mono text-xs text-chalk">Ctrl+V</kbd> with a
-            screenshot, or paste the statement below.
+            <kbd className="rounded-ui border-2 border-ink bg-paper px-1 font-mono text-[11px] font-bold text-ink">Ctrl+V</kbd>{" "}
+            with a screenshot, or paste the statement below.
           </p>
         </>
       )}
 
       {(!problem || showPaste) && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3 pt-1">
           <textarea
             className={`${input} h-24 resize-y`}
             placeholder="Paste the problem statement"
@@ -53,9 +61,9 @@ export function ProblemCard({ problem, loadedFrom, reading, onReadText, onReadSc
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             <button
-              className={btnOutline}
+              className={btnSecondary}
               disabled={reading || !text.trim()}
               onClick={() => {
                 onReadText(text.trim());
@@ -65,7 +73,7 @@ export function ProblemCard({ problem, loadedFrom, reading, onReadText, onReadSc
               Read text
             </button>
             <button
-              className={btnOutline}
+              className={btnSecondary}
               disabled={reading}
               onClick={() => {
                 setShowPaste(false);
@@ -119,45 +127,52 @@ function ProblemView({
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h2 className="font-display text-[30px] font-semibold leading-[1.05]">{problem.title}</h2>
-      {sourceLabel &&
-        (problem.source_url ? (
-          <a
-            href={problem.source_url}
-            target="_blank"
-            rel="noreferrer"
-            className="truncate text-sm text-dust underline decoration-dust/40 underline-offset-4 hover:text-chalk"
-          >
-            {sourceLabel}
-          </a>
-        ) : (
-          <p className="truncate text-sm text-dust">{sourceLabel}</p>
-        ))}
+    <div className="flex flex-col gap-3">
+      <div>
+        <p className={label}>
+          The problem
+          {sourceLabel &&
+            (problem.source_url ? (
+              <>
+                {" / "}
+                <a href={problem.source_url} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-ink">
+                  {sourceLabel}
+                </a>
+              </>
+            ) : (
+              <> / {sourceLabel}</>
+            ))}
+        </p>
+        <h2 className={`${heading} mt-1.5 text-[26px] leading-[0.95]`}>{problem.title}</h2>
+      </div>
 
-      <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1">
-        <button className={btnText} aria-expanded={showStatement} onClick={() => setShowStatement((s) => !s)}>
+      <div className="flex flex-wrap gap-2.5">
+        <button className={btnTag} aria-expanded={showStatement} onClick={() => setShowStatement((s) => !s)}>
           {showStatement ? "Hide statement" : "Show statement"}
         </button>
-        {!rating?.ok && !ratingBusy && (
-          <button className={btnText} onClick={reveal} title="Spoiler: shows how hard the problem is">
-            Reveal weight
+        {!rating?.ok && (
+          <button
+            className={`${btnTag} bg-sun`}
+            onClick={reveal}
+            disabled={ratingBusy}
+            title="Spoiler: shows how hard the problem is"
+          >
+            {ratingBusy ? "Weighing…" : "Reveal weight"}
           </button>
         )}
-        <button className={btnText} aria-expanded={pasteOpen} onClick={onTogglePaste}>
+        <button className={btnTag} aria-expanded={pasteOpen} onClick={onTogglePaste}>
           {pasteOpen ? "Keep this problem" : "New problem"}
         </button>
       </div>
 
-      {ratingBusy && <LoadingLine />}
       {rating?.ok && <Weight rating={rating} fromCodeforces={fromCodeforces} />}
-      {ratingError && <p className="text-sm text-dust">{ratingError}</p>}
+      {ratingError && <p className="text-sm font-bold">{ratingError}</p>}
 
       {showStatement && (
-        <div className="mt-2 flex flex-col gap-3 text-[15px] leading-relaxed">
+        <div className={`${divider} flex flex-col gap-3 pt-3 text-sm leading-relaxed`}>
           <p className="whitespace-pre-wrap">{problem.summary}</p>
           {problem.constraints.length > 0 && (
-            <ul className="list-inside list-disc text-sm text-dust">
+            <ul className="list-inside list-disc text-slate">
               {problem.constraints.map((c, i) => (
                 <li key={i}>{c}</li>
               ))}
@@ -177,25 +192,31 @@ function ProblemView({
 
 function Weight({ rating, fromCodeforces }: { rating: RatingResponse; fromCodeforces: boolean }) {
   const estimate =
-    rating.rating != null ? `Spotter's estimate: about ${rating.rating}, ${rating.confidence} confidence` : null;
+    rating.rating != null ? `Spotter's estimate: ~${rating.rating}, ${rating.confidence} confidence` : null;
+  const box = "border-t-2 border-dashed border-ink/30 pt-3";
 
   if (rating.source === "leetcode") {
     return (
-      <div className="mt-1">
-        <p className="font-display text-xl font-semibold">LeetCode: {rating.difficulty ?? "Unrated"}</p>
-        {estimate && <p className="text-sm text-dust">{estimate}</p>}
+      <div className={box}>
+        <p className={`${heading} text-lg leading-none`}>LeetCode: {rating.difficulty ?? "Unrated"}</p>
+        {estimate && <p className={`${label} mt-1.5`}>{estimate}</p>}
       </div>
     );
   }
   if (rating.rating == null) return null;
   if (rating.source === "codeforces") {
-    return <p className="mt-1 font-display text-xl font-semibold">Codeforces rating: {rating.rating}</p>;
+    return (
+      <div className={box}>
+        <p className={`${heading} text-lg leading-none`}>Codeforces: {rating.rating}</p>
+        <p className={`${label} mt-1.5`}>Official rating</p>
+      </div>
+    );
   }
   return (
-    <div className="mt-1">
-      <p className="font-display text-xl font-semibold">About {rating.rating}</p>
-      <p className="text-sm text-dust">
-        Spotter&apos;s estimate, {rating.confidence} confidence{fromCodeforces ? ". Not rated on Codeforces yet." : ""}
+    <div className={box}>
+      <p className={`${heading} text-lg leading-none`}>~{rating.rating}</p>
+      <p className={`${label} mt-1.5`}>
+        Spotter&apos;s estimate, {rating.confidence} confidence{fromCodeforces ? ". Not rated on Codeforces yet" : ""}
       </p>
     </div>
   );
@@ -243,11 +264,11 @@ function isCodeforcesUrl(url: string | undefined): boolean {
   }
 }
 
-function Sample({ label, value }: { label: string; value: string }) {
+function Sample({ label: name, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-sm text-dust">{label}</p>
-      <pre className="mt-1 overflow-x-auto rounded-ui bg-mat p-2 font-mono text-xs leading-relaxed text-chalk">
+      <p className={label}>{name}</p>
+      <pre className="mt-1 overflow-x-auto rounded-ui border-2 border-ink bg-paper p-2 font-mono text-xs leading-relaxed">
         {value || "(none)"}
       </pre>
     </div>

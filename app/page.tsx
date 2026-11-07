@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   getHint,
   readProblem,
@@ -37,7 +37,8 @@ export default function Home() {
 
   const watcher = useScreenWatcher({ problemTitle: problem?.title });
 
-  // When watch mode says something new, it takes over the speech bubble.
+  // When watch mode says something new, it takes over the speech bubble. Watch results only
+  // ever touch the mascot, the bubble and the status: never the log, the plates or the problem.
   const [seenWatchLine, setSeenWatchLine] = useState(watcher.mascotLine);
   if (watcher.mascotLine !== seenWatchLine) {
     setSeenWatchLine(watcher.mascotLine);
@@ -55,11 +56,22 @@ export default function Home() {
 
   // ---------- Reading the problem ----------
 
+  // Set while "New problem" is open, so the next read starts fresh even if it's the same problem.
+  const freshNextRead = useRef(false);
+
   function loadProblem(p: Problem, from: string | null, message: string) {
+    setRefused(false);
+    // Re-reading the problem you're already on (Read this page again after a detour, another
+    // screenshot of it) keeps the log and the plates. Only a different problem, or a read after
+    // New problem, starts over.
+    if (problem && !freshNextRead.current && isSameProblem(problem, p)) {
+      say(`Still on "${problem.title}". Your log is right where you left it.`);
+      return;
+    }
+    freshNextRead.current = false;
     setProblem(p);
     setLoadedFrom(from);
     setHints([]);
-    setRefused(false);
     setSolvedWith(null);
     say(message || `Got it: "${p.title}". Press Spot me when you need a hand.`);
   }
@@ -216,22 +228,30 @@ export default function Home() {
   else if (hintBusy || watchingStatus === "stuck" || lastFromHint) pose = "spotting";
 
   return (
-    <div className="min-h-screen w-full bg-rubber text-chalk">
-      <main className="mx-auto flex w-full max-w-[400px] flex-col px-4 pb-12">
-        <header className="flex items-baseline justify-between pt-4">
-          <h1 className="font-display text-2xl font-bold">Spotter</h1>
-          <Link href="/install" className="text-sm text-dust underline-offset-4 hover:text-chalk hover:underline">
-            Get the Chrome extension
+    <div className="min-h-screen w-full bg-paper text-ink">
+      <header className="border-b-4 border-ink bg-mint">
+        <div className="mx-auto flex max-w-[400px] items-end justify-between gap-3 px-4 pb-3 pt-4">
+          <div>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.28em]">Competitive programming</p>
+            <h1 className="text-[34px] font-black uppercase leading-[0.88] tracking-[-0.055em]">Spotter</h1>
+          </div>
+          <Link
+            href="/install"
+            className="rounded-ui border-2 border-ink bg-white px-2 py-1.5 font-mono text-[10px] font-black uppercase tracking-wider shadow-hard-sm transition-transform hover:-translate-y-0.5 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+          >
+            Get the extension
           </Link>
-        </header>
+        </div>
+      </header>
 
+      <main className="mx-auto flex w-full max-w-[400px] flex-col px-4 pb-12">
         {/* Pinned so side-eye, refusals and the loaded bar stay visible while scrolled down to the log. */}
-        <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-2 border-b border-dust/20 bg-rubber px-4 pb-3 pt-3">
+        <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-1 bg-paper px-4 pb-1 pt-4">
           <Mascot pose={pose} line={line} />
           <Barbell loaded={steps.length} />
         </div>
 
-        <div className="flex flex-col gap-10 pt-7">
+        <div className="flex flex-col gap-6 pt-4">
           <ProblemCard
             problem={problem}
             loadedFrom={loadedFrom}
@@ -239,6 +259,9 @@ export default function Home() {
             onReadText={(text) => void read({ text })}
             onReadScreen={readScreen}
             onLine={(l) => say(l)}
+            onNewProblemChange={(open) => {
+              freshNextRead.current = open;
+            }}
           />
 
           <HintLadder
@@ -258,4 +281,28 @@ export default function Home() {
       </main>
     </div>
   );
+}
+
+function normTitle(t: string): string {
+  return t
+    .toLowerCase()
+    .replace(/^\s*[a-z]?\d+[a-z]?[.:)]\s*/, "") // "1. Two Sum", "1520A. ..."
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** Host plus the first two path segments: /problems/two-sum/description -> leetcode.com/problems/two-sum. */
+function problemKey(url: string): string {
+  try {
+    const u = new URL(url);
+    return [u.hostname.replace(/^www\./, ""), ...u.pathname.split("/").filter(Boolean).slice(0, 2)].join("/");
+  } catch {
+    return url;
+  }
+}
+
+/** Same problem if the titles match (ignoring numbering and punctuation) and the URLs don't disagree. */
+function isSameProblem(a: Problem, b: Problem): boolean {
+  if (a.source_url && b.source_url && problemKey(a.source_url) !== problemKey(b.source_url)) return false;
+  return normTitle(a.title) === normTitle(b.title);
 }

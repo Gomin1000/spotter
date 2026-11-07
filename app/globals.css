@@ -1,53 +1,58 @@
 @import "tailwindcss";
 
-/* Spotter: a gym training log. Flat rubber floor, chalk text, plate colours only for meaning. */
+/* Spotter: sticker / neo-brutalist. Ink borders, hard offset shadows, no blur, no gradients. */
 :root {
-  --rubber: #24272a; /* page background */
-  --mat: #2f3337; /* inputs and code only */
-  --chalk: #edede8; /* text and the main button */
-  --dust: #9aa0a6; /* secondary text */
+  --paper: #f3f1e8; /* page background */
+  --ink: #101827; /* borders, shadows, text */
+  --slate: #475569; /* secondary text and labels */
+  --mint: #38d6a1; /* accent: header, Spot me */
+  --mint-soft: #dff8ef;
+  --coral: #ff6b5f;
+  --sun: #f4d35e;
   --plate-green: #3a9d5d; /* step 1, focused */
   --plate-yellow: #e8b931; /* step 2, stuck */
   --plate-blue: #2f6fd6; /* step 3 */
   --plate-red: #d7352f; /* step 4, distracted */
+  --plate-grey: #cbd2da; /* idle */
 }
 
 @theme inline {
-  --color-rubber: var(--rubber);
-  --color-mat: var(--mat);
-  --color-chalk: var(--chalk);
-  --color-dust: var(--dust);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-slate: var(--slate);
+  --color-mint: var(--mint);
+  --color-mint-soft: var(--mint-soft);
+  --color-coral: var(--coral);
+  --color-sun: var(--sun);
   --color-plate-green: var(--plate-green);
   --color-plate-yellow: var(--plate-yellow);
   --color-plate-blue: var(--plate-blue);
   --color-plate-red: var(--plate-red);
-  --font-sans: var(--font-barlow);
-  --font-display: var(--font-barlow-condensed);
-  --font-mono: var(--font-geist-mono);
-  --radius-ui: 6px;
-}
-
-html {
-  color-scheme: dark;
+  --color-plate-grey: var(--plate-grey);
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --radius-ui: 4px;
+  --shadow-hard: 4px 4px 0 var(--ink);
+  --shadow-hard-sm: 3px 3px 0 var(--ink);
 }
 
 body {
-  background: var(--rubber);
-  color: var(--chalk);
-  font-family: var(--font-barlow), system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
 }
 
 :focus-visible {
-  outline: 2px solid var(--chalk);
+  outline: 3px solid var(--ink);
   outline-offset: 2px;
 }
 
 ::selection {
-  background: var(--chalk);
-  color: var(--rubber);
+  background: var(--sun);
+  color: var(--ink);
 }
 
-/* The only two animations: a plate sliding onto the bar, and the mascot bouncing on a new pose. */
+/* The plate sliding onto the bar, and the mascot bouncing on a new pose. */
 @keyframes plate-in-left {
   from {
     transform: translateX(-28px);
