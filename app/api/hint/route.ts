@@ -6,7 +6,7 @@ import { generateJson, ThinkingLevel } from "@/lib/gemini";
 export const maxDuration = 60;
 
 const RUNG_RULES: Record<Rung, string> = {
-  1: "Rung 1 Warm-up: give ONE observation the user should notice (about the constraints, the samples, or the structure). Do NOT name any algorithm, technique, or data structure.",
+  1: "Rung 1 Warm-up: point at ONE observation in the statement itself (a constraint, a sample, or something the statement says). Do NOT name or hint at any algorithm, technique, data structure, or graph property: no \"bipartite\", \"DP\", \"two pointers\", \"greedy\", \"BFS\", \"binary search\", \"prefix sums\", etc. Ask a question about the observation instead.",
   2: "Rung 2 Form check: name the technique or data structure that fits, and say briefly WHY it fits. Do not describe the full approach.",
   3: "Rung 3 Spot: describe the approach in plain English, step by step. No code and no pseudocode.",
   4: "Rung 4 Assisted rep: pseudocode of at most 8 lines, with the key lines replaced by ___ blanks the user must fill in. Language-neutral pseudocode only, never real C++/Python/Java.",
@@ -52,8 +52,16 @@ function realCodeLines(text: string): number {
     .filter((l) => l.trim() && !l.includes("___") && CODE_LINE.test(l)).length;
 }
 
+// Technique, data-structure and graph-property names that rung 1 must not mention.
+const RUNG1_BANNED =
+  /\b(bipartite|dp|dynamic programming|memoi[sz]\w*|two[- ]pointers?|sliding window|greedy|binary search|bfs|dfs|breadth[- ]first|depth[- ]first|dijkstra|bellman|floyd|prefix sums?|suffix sums?|difference array|segment tree|fenwick|bit tree|sparse table|union[- ]find|dsu|disjoint set|topological|toposort|dag|strongly connected|connected components?|spanning tree|mst|kruskal|prim'?s|bridges?|articulation|lca|hash ?(map|set|ing)|heap|priority queue|monotonic|deque|stack|bitmasks?|backtracking|divide and conquer|sieve|kmp|z-function|trie|meet in the middle|knapsack|graph colou?ring|two[- ]colou?ring)\b/i;
+
 function unsafeReason(out: ModelHint, rung: Rung): string | null {
   if (out.refused) return null;
+  if (rung === 1) {
+    const term = out.hint.match(RUNG1_BANNED)?.[0];
+    if (term) return `the rung 1 hint named a technique or property ("${term}"); rung 1 only points at an observation in the statement`;
+  }
   if (realCodeLines(out.hint) > 5) return "it contained more than 5 lines of real code";
   if (rung === 4 && !out.hint.includes("___")) return "the rung 4 pseudocode had no ___ blanks";
   return null;
@@ -61,6 +69,18 @@ function unsafeReason(out: ModelHint, rung: Rung): string | null {
 
 function failure(rung: Rung, mascot_line: string): HintResponse {
   return { ok: false, rung, hint: "", refused: false, mascot_line, pose: "idle" };
+}
+
+/** Observation-only fallback when rung 1 keeps naming a technique. */
+function safeWarmUp(): HintResponse {
+  return {
+    ok: true,
+    rung: 1,
+    hint: "Reread the constraints and the first sample. How big can the input get, and what does that rule out?",
+    refused: false,
+    mascot_line: "Warm-up set. Read the plates before you lift.",
+    pose: "spotting",
+  };
 }
 
 function refusal(rung: Rung): HintResponse {
@@ -138,8 +158,8 @@ export async function POST(request: Request): Promise<Response> {
       });
       reason = unsafeReason(out, rung);
       if (reason) {
-        console.warn(`[hint] rung ${rung} rejected again (${reason}); refusing`);
-        return Response.json(refusal(rung));
+        console.warn(`[hint] rung ${rung} rejected again (${reason}); ${rung === 1 ? "using safe warm-up" : "refusing"}`);
+        return Response.json(rung === 1 ? safeWarmUp() : refusal(rung));
       }
     }
 
