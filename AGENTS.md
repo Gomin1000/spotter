@@ -32,7 +32,8 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
-| Frontend / UI | `@Not-Acode-Master` (Santiago) | `components/`, `app/page.tsx`, `app/globals.css` |
+| Main UI build (until 1:30 PM, then back to Santiago for styling) | `@Gomin1000` (Gleb) | `components/`, `app/page.tsx` |
+| Frontend / UI, mascot | `@Not-Acode-Master` (Santiago) | `app/globals.css`, `public/mascot/`; `components/` and `app/page.tsx` again from 1:30 PM |
 | Backend, contract, config | `@Gomin1000` (Gleb) | `app/api/`, `lib/` (including `lib/contract.ts`), all config files |
 
 <!-- BEGIN:nextjs-agent-rules -->
