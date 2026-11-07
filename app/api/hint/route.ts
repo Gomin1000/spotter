@@ -18,6 +18,7 @@ Hard rules:
 - mascot_line: one short in-character gym line (max ~12 words).
 - pose: "spotting" for a normal hint, "flex" when the user's code or progress looks good, "no-free-reps" only when refused.
 - Keep the hint short: 1-4 sentences, or the pseudocode for rung 4.
+- Write math as plain text (a_i, 2·10^5, n ≤ 10^5, O(n log n)). NEVER use LaTeX, backslash commands, or $ signs.
 - Only give a hint you are confident is correct for this exact problem; if unsure, give a more general hint instead of a wrong one.`;
 
 const SCHEMA = {

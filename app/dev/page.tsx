@@ -16,6 +16,7 @@ import {
 import { grabScreenOnce, resizeToJpegBase64 } from "@/lib/image";
 import { usePasteImage } from "@/lib/usePasteImage";
 import { useExtensionBridge } from "@/lib/useExtensionBridge";
+import { OPEN_IN_TAB_MESSAGE, useScreenWatcher } from "@/lib/useScreenWatcher";
 
 export default function DevPage() {
   const [imageB64, setImageB64] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export default function DevPage() {
   const [output, setOutput] = useState("");
   const [pasted, setPasted] = useState<string | null>(null);
   const [loadedFrom, setLoadedFrom] = useState<string | null>(null);
+  const watcher = useScreenWatcher({ problemTitle: problem?.title });
 
   async function run(label: string, fn: () => Promise<unknown>) {
     setBusy(true);
@@ -110,18 +112,18 @@ ${message}`);
     });
   }
 
-  function onHint() {
+  function onHint(r: Rung = rung) {
     run("getHint", async () => {
       const res = await getHint({
         problem: problem ?? MOCK_PROBLEM,
-        rung,
+        rung: r,
         previous_hints: hints,
         code: code || undefined,
         user_message: userMessage || undefined,
       });
       if (res.ok && !res.refused) {
         setHints((h) => [...h, res.hint]);
-        if (rung < 4) setRung((rung + 1) as Rung);
+        if (r < 4) setRung((r + 1) as Rung);
       }
       return res;
     });
@@ -182,8 +184,43 @@ ${message}`);
 
       <section className="flex gap-2">
         <button className={btn} disabled={busy} onClick={() => onRead()}>readProblem()</button>
-        <button className={btn} disabled={busy} onClick={onHint}>getHint()</button>
+        <button className={btn} disabled={busy} onClick={() => onHint()}>getHint()</button>
         <button className={btn} disabled={busy} onClick={onWatch}>watch()</button>
+      </section>
+
+      <section className="flex flex-col gap-2 border rounded p-3">
+        <h2 className="font-semibold">Watch mode (useScreenWatcher)</h2>
+        <div className="flex gap-2 items-center">
+          {watcher.isWatching ? (
+            <button className={btn} onClick={watcher.stop}>Stop</button>
+          ) : (
+            <button className={btn} onClick={watcher.start}>Start watching</button>
+          )}
+          <label className="text-sm flex gap-1 items-center">
+            <input type="checkbox" checked={watcher.demoMode} onChange={(e) => watcher.setDemoMode(e.target.checked)} />
+            Demo mode (5 s instead of 20 s)
+          </label>
+        </div>
+        <p className="text-sm font-mono">
+          watching={String(watcher.isWatching)} status={watcher.status ?? "-"} pose={watcher.pose} offerHint={String(watcher.offerHint)}
+        </p>
+        {watcher.reason && <p className="text-sm">reason: {watcher.reason}</p>}
+        {watcher.mascotLine && <p className="text-sm font-semibold">Spotter: “{watcher.mascotLine}”</p>}
+        {watcher.offerHint && (
+          <div className="flex gap-2 items-center text-sm">
+            Stuck 3 checks in a row. Want rung 1?
+            <button className={btn} disabled={busy} onClick={() => { watcher.dismissOffer(); onHint(1); }}>Spot me</button>
+            <button className={btn} onClick={watcher.dismissOffer}>Dismiss</button>
+          </div>
+        )}
+        {watcher.error && (
+          <p className="text-sm text-red-600">
+            {watcher.error}{" "}
+            {watcher.error === OPEN_IN_TAB_MESSAGE && (
+              <button className={btn} onClick={watcher.openInTab}>Open in tab</button>
+            )}
+          </p>
+        )}
       </section>
 
       <p className="text-sm">
