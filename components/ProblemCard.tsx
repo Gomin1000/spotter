@@ -91,6 +91,8 @@ function ProblemView({
   const [rating, setRating] = useState<RatingResponse | null>(null);
   const [ratingBusy, setRatingBusy] = useState(false);
   const [ratingError, setRatingError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const fromCodeforces = isCodeforcesUrl(problem.source_url);
 
   async function reveal() {
     setRatingBusy(true);
@@ -115,11 +117,16 @@ function ProblemView({
         <p className="truncate text-xs text-[#6b7aa6]">from {loadedFrom}</p>
       )}
 
-      <details className="group rounded-xl bg-[#0a1430] px-3 py-2">
-        <summary className="cursor-pointer select-none text-sm font-semibold text-[#5eead4]">
-          Summary
-        </summary>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#d6def5]">{problem.summary}</p>
+      <button
+        className="self-start text-sm font-semibold text-[#5eead4] hover:underline"
+        aria-expanded={showDetails}
+        onClick={() => setShowDetails((s) => !s)}
+      >
+        {showDetails ? "▾ Hide details" : "▸ Show details"}
+      </button>
+      {showDetails && (
+      <div className="rounded-xl bg-[#0a1430] px-3 py-2">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#d6def5]">{problem.summary}</p>
         {problem.constraints.length > 0 && (
           <ul className="mt-2 list-inside list-disc text-xs text-[#94a3c8]">
             {problem.constraints.map((c, i) => (
@@ -133,15 +140,21 @@ function ProblemView({
             <Sample label="Output" value={problem.sample_output} />
           </div>
         )}
-      </details>
+      </div>
+      )}
 
       <div className="flex min-h-9 items-center gap-2">
         {rating && rating.ok && rating.rating != null ? (
-          <p className="rounded-lg border border-[#f472b6]/50 bg-[#f472b6]/10 px-3 py-1.5 text-sm font-semibold text-[#fbcfe8]">
-            {rating.source === "codeforces"
-              ? `Official CF rating: ${rating.rating}`
-              : `Spotter's estimate: ~${rating.rating}${rating.confidence === "high" ? "" : ` (${rating.confidence} confidence)`}`}
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="rounded-lg border border-[#f472b6]/50 bg-[#f472b6]/10 px-3 py-1.5 text-sm font-semibold text-[#fbcfe8]">
+              {rating.source === "codeforces"
+                ? `Official CF rating: ${rating.rating}`
+                : `Spotter's estimate: ~${rating.rating} (${rating.confidence} confidence)`}
+            </p>
+            {rating.source === "estimate" && fromCodeforces && (
+              <p className="text-xs text-[#94a3c8]">Not rated on Codeforces yet</p>
+            )}
+          </div>
         ) : ratingBusy ? (
           <LoadingLine />
         ) : (
@@ -159,6 +172,15 @@ function ProblemView({
       </div>
     </div>
   );
+}
+
+function isCodeforcesUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    return /(^|\.)codeforces\.(com|ml|net)$/i.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
 }
 
 function Sample({ label, value }: { label: string; value: string }) {

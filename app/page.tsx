@@ -17,7 +17,7 @@ import { HintLadder, type GivenHint } from "@/components/HintLadder";
 import { Mascot } from "@/components/Mascot";
 import { ProblemCard } from "@/components/ProblemCard";
 import { SessionCard } from "@/components/SessionCard";
-import { ERROR_LINES } from "@/components/voice";
+import { ERROR_LINES, SOLVED_LINES } from "@/components/voice";
 
 const HELLO = "Spotter here. I spot you. I don't lift for you.";
 
@@ -31,6 +31,7 @@ export default function Home() {
   const [refused, setRefused] = useState(false);
   const [line, setLine] = useState(HELLO);
   const [lastFromHint, setLastFromHint] = useState(false);
+  const [solvedWith, setSolvedWith] = useState<number | null>(null);
 
   const watcher = useScreenWatcher({ problemTitle: problem?.title });
 
@@ -57,6 +58,7 @@ export default function Home() {
     setLoadedFrom(from);
     setHints([]);
     setRefused(false);
+    setSolvedWith(null);
     say(message || `Got it: "${p.title}". Press Spot me when you need a hand.`);
   }
 
@@ -122,6 +124,7 @@ export default function Home() {
     if (done && !user_message) return false;
     setHintBusy(true);
     setRefused(false);
+    setSolvedWith(null);
     try {
       const res = await getHint({
         problem,
@@ -149,13 +152,23 @@ export default function Home() {
     }
   }
 
+  function markSolved() {
+    const n = hints.length;
+    setSolvedWith(n);
+    setRefused(false);
+    const cheer = SOLVED_LINES[Math.floor(Math.random() * SOLVED_LINES.length)];
+    say(`${cheer} ${n === 0 ? "No spots needed." : `Solved with ${n} spot${n === 1 ? "" : "s"}.`}`);
+  }
+
   // ---------- Pose ----------
-  // no-free-reps after a refusal > side-eye when distracted > spotting while hinting or stuck > idle
+  // no-free-reps after a refusal > side-eye when distracted > flex when solved
+  // > spotting while hinting or stuck > idle
 
   const watchingStatus = watcher.isWatching ? watcher.status : null;
   let pose: MascotPose = "idle";
   if (refused) pose = "no-free-reps";
   else if (watchingStatus === "distracted") pose = "side-eye";
+  else if (solvedWith != null) pose = "flex";
   else if (hintBusy || watchingStatus === "stuck" || lastFromHint) pose = "spotting";
 
   return (
@@ -169,7 +182,10 @@ export default function Home() {
           <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6b7aa6]">No free reps</span>
         </header>
 
-        <Mascot pose={pose} line={line} />
+        {/* Pinned so side-eye and refusals stay visible while scrolled down to the hints. */}
+        <div className="sticky top-0 z-20 -mx-4 border-b border-[#24345f]/70 bg-[#0b1430]/90 px-4 py-2 backdrop-blur-md">
+          <Mascot pose={pose} line={line} />
+        </div>
 
         <ProblemCard
           problem={problem}
@@ -188,6 +204,8 @@ export default function Home() {
           onCodeChange={setCode}
           onSpotMe={() => void requestHint()}
           onTalk={(m) => requestHint(m)}
+          solvedWith={solvedWith}
+          onSolved={markSolved}
         />
 
         <SessionCard watcher={watcher} canSpot={!!problem && !done && !hintBusy} onAcceptSpot={() => void requestHint()} />

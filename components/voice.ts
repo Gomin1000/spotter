@@ -8,6 +8,13 @@ export const LOADING_LINES = [
   "Tightening the belt…",
 ];
 
+export const SOLVED_LINES = [
+  "Clean rep! New PR.",
+  "Light weight, baby! Accepted.",
+  "That's a PR. Ring the bell!",
+  "Full range of motion. Beautiful.",
+];
+
 export const ERROR_LINES = {
   read: "Pulled a hamstring reading that. Try again, or paste the text.",
   notFound: "I don't see a problem there. Open the statement and try again.",

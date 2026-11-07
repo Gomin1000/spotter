@@ -18,13 +18,16 @@ interface Props {
   onSpotMe: () => void;
   /** Sends a message with the next hint request. Returns true if it was sent. */
   onTalk: (message: string) => Promise<boolean>;
+  /** Hints used when the user marked it solved, or null if not solved yet. */
+  solvedWith: number | null;
+  onSolved: () => void;
 }
 
 const RUNGS: Rung[] = [1, 2, 3, 4];
 // Bigger plate = heavier rung.
 const PLATE_SIZE: Record<Rung, string> = { 1: "h-10", 2: "h-12", 3: "h-14", 4: "h-16" };
 
-export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpotMe, onTalk }: Props) {
+export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpotMe, onTalk, solvedWith, onSolved }: Props) {
   const [message, setMessage] = useState("");
   const done = hints.length >= 4;
   const next = (Math.min(hints.length + 1, 4)) as Rung;
@@ -121,6 +124,21 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
           Send
         </button>
       </form>
+
+      {hasProblem &&
+        (solvedWith != null ? (
+          <p className="mt-3 rounded-xl border border-[#2dd4bf]/60 bg-[#2dd4bf]/10 px-3 py-2 text-center text-sm font-bold text-[#5eead4]">
+            💪 {solvedWith === 0 ? "Solved with no spots. All you." : `Solved with ${solvedWith} spot${solvedWith === 1 ? "" : "s"}`}
+          </p>
+        ) : (
+          <button
+            className="mt-3 w-full rounded-xl border-2 border-[#2dd4bf] py-2 font-bold text-[#5eead4] transition hover:bg-[#2dd4bf]/10 disabled:opacity-40"
+            disabled={busy}
+            onClick={onSolved}
+          >
+            I solved it 💪
+          </button>
+        ))}
     </section>
   );
 }

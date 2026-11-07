@@ -34,8 +34,8 @@ export function Mascot({ pose, line }: { pose: MascotPose; line: string }) {
   const available = useAvailablePoses();
 
   return (
-    <section className="flex items-end gap-3">
-      <div className="relative h-28 w-28 shrink-0">
+    <section className="flex h-[104px] items-center gap-3">
+      <div className="relative h-24 w-24 shrink-0">
         {available[pose] ? (
           // eslint-disable-next-line @next/next/no-img-element -- plain img so new PNGs need no config
           <img
@@ -50,14 +50,16 @@ export function Mascot({ pose, line }: { pose: MascotPose; line: string }) {
             className="flex h-full w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-[#2dd4bf]/60 bg-gradient-to-br from-[#16264f] to-[#2a1640] text-center"
             aria-label={`Spotter (${pose})`}
           >
-            <span className="text-4xl">{POSE_EMOJI[pose]}</span>
+            <span className="text-3xl">{POSE_EMOJI[pose]}</span>
             <span className="mt-1 text-[10px] font-bold uppercase tracking-widest text-[#f472b6]">{pose}</span>
           </div>
         )}
       </div>
-      <div className="relative mb-4 min-h-12 flex-1 rounded-2xl rounded-bl-sm border border-[#f472b6]/50 bg-[#1b1f4a] px-3 py-2 text-sm font-medium text-[#f5f7ff]">
-        <span className="absolute -left-2 bottom-2 h-3 w-3 rotate-45 border-b border-l border-[#f472b6]/50 bg-[#1b1f4a]" />
-        <span aria-live="polite">{line}</span>
+      <div className="relative flex-1 rounded-2xl border border-[#f472b6]/50 bg-[#1b1f4a] px-3 py-2 text-sm font-medium text-[#f5f7ff]">
+        <span className="absolute -left-[7px] top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 border-b border-l border-[#f472b6]/50 bg-[#1b1f4a]" />
+        <span aria-live="polite" className="line-clamp-3" title={line}>
+          {line}
+        </span>
       </div>
     </section>
   );
