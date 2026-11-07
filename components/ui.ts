@@ -1,4 +1,5 @@
-import type { Rung, WatchStatus } from "@/lib/api";
+import type { Rung } from "@/lib/api";
+import type { DisplayStatus } from "@/lib/useScreenWatcher";
 
 // Shared class strings for the sticker look: ink borders, small radius, hard offset shadows.
 // Buttons press down onto their shadow when clicked.
@@ -33,9 +34,11 @@ export const STEP_LABEL: Record<Rung, string> = {
 /** Base classes for a watch-status pill; add size classes and STATUS[s].pill. */
 export const statusPill = "inline-block rounded-full border-2 border-ink font-mono font-black uppercase tracking-widest";
 
-export const STATUS: Record<WatchStatus, { label: string; pill: string }> = {
+/** Pill per display status. Yellow only means suspicious; stuck is blue. */
+export const STATUS: Record<DisplayStatus, { label: string; pill: string }> = {
   focused: { label: "Focused", pill: "bg-plate-green text-ink" },
-  stuck: { label: "Stuck", pill: "bg-plate-yellow text-ink" },
+  suspicious: { label: "Suspicious", pill: "bg-plate-yellow text-ink" },
+  stuck: { label: "Stuck", pill: "bg-plate-blue text-white" },
   distracted: { label: "Distracted", pill: "bg-plate-red text-white" },
   idle: { label: "Idle", pill: "bg-plate-grey text-ink" },
   unknown: { label: "Unsure", pill: "bg-plate-grey text-ink" },

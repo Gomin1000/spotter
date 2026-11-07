@@ -5,14 +5,25 @@ import type { MascotPose } from "@/lib/api";
 const POSES: Record<MascotPose, { name: string; cue: string; bg: string }> = {
   idle: { name: "Idle", cue: "Arms crossed", bg: "#f6e7c8" },
   spotting: { name: "Spotting", cue: "Spotting you", bg: "#f6e7c8" },
-  "side-eye": { name: "Side-eye", cue: "Caught you slacking", bg: "#e1e8f5" },
+  "side-eye": { name: "Side-eye", cue: "Watching you", bg: "#e1e8f5" },
   flex: { name: "Flex", cue: "Clean rep", bg: "#e2efd6" },
   "no-free-reps": { name: "No free reps", cue: "No free reps", bg: "#f6d8cc" },
 };
 
 /** Compact pose strip: a 96 px mascot tile, then the pose name, cue and current line.
  *  `aside` sits at the right end of the pose-name row (kept no taller than the name). */
-export function Mascot({ pose, line, aside }: { pose: MascotPose; line: string; aside?: ReactNode }) {
+export function Mascot({
+  pose,
+  line,
+  aside,
+  cue,
+}: {
+  pose: MascotPose;
+  line: string;
+  aside?: ReactNode;
+  /** Overrides the pose's caption cue (e.g. "Caught you slacking" when distracted). */
+  cue?: string;
+}) {
   // Warm the cache so a pose change never shows an empty tile.
   useEffect(() => {
     for (const p of Object.keys(POSES)) new Image().src = `/mascot/${p}.png`;
@@ -21,7 +32,7 @@ export function Mascot({ pose, line, aside }: { pose: MascotPose; line: string; 
   // Poses whose PNG failed to load fall back to idle art (the caption still names the pose).
   const [missing, setMissing] = useState<Partial<Record<MascotPose, true>>>({});
   const shown: MascotPose = missing[pose] ? "idle" : pose;
-  const info = POSES[pose];
+  const info = { ...POSES[pose], cue: cue ?? POSES[pose].cue };
 
   return (
     <section className="flex items-center gap-3.5">

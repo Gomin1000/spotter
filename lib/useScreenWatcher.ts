@@ -1,20 +1,25 @@
 "use client";
 // Watch mode: keeps one screen share open, sends the last 2 frames to /api/watch
-// every 20 s (5 s in demo mode). "Stuck" means a coding/problem screen with no visible
+// every 10 s (5 s in demo mode). "Stuck" means a coding/problem screen with no visible
 // progress for STUCK_AFTER_MS (45 s in demo mode); then it offers a hint.
+// Distraction is two-stage (displayStatus): under 15 s off task nothing changes,
+// 15-45 s is "suspicious" (side-eye), 45 s+ is "distracted" (no-free-reps). Demo: 5 s / 15 s.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { watch, type MascotPose, type WatchStatus } from "./api";
 import { captureVideoFrame } from "./image";
 
-export const WATCH_INTERVAL_MS = 20_000;
+export const WATCH_INTERVAL_MS = 10_000;
 export const DEMO_INTERVAL_MS = 5_000;
 /** No visible progress on a coding/problem screen for this long counts as stuck. */
 export const STUCK_AFTER_MS = 15 * 60_000;
 export const DEMO_STUCK_AFTER_MS = 45_000;
 const STUCK_LINE = "Form looks frozen, bro. Need a spot?";
-/** Still distracted after this long: side-eye escalates to no-free-reps. */
-export const DISTRACTED_ESCALATE_MS = 2 * 60_000;
-export const DEMO_DISTRACTED_ESCALATE_MS = 10_000;
+/** Off task this long: "suspicious" (side-eye). */
+export const SUSPICIOUS_AFTER_MS = 15_000;
+export const DEMO_SUSPICIOUS_AFTER_MS = 5_000;
+/** Off task this long: "distracted" (no-free-reps). */
+export const DISTRACTED_AFTER_MS = 45_000;
+export const DEMO_DISTRACTED_AFTER_MS = 15_000;
 function escalatedLine(ms: number): string {
   return `${formatDuration(ms)} off task? That's skipping leg day. Back to the bar.`;
 }
@@ -23,13 +28,21 @@ export const OPEN_IN_TAB_MESSAGE = "Open Spotter in a tab to use watch mode";
 export interface ScreenWatcherOptions {
   /** Title of the loaded problem, sent with each frame so the model knows what "on task" means. */
   problemTitle?: string;
-  /** Initial demo mode (5 s interval instead of 20 s). */
+  /** Initial demo mode (5 s interval instead of 10 s, shorter thresholds). */
   demoMode?: boolean;
 }
 
+/** What the UI shows: WatchStatus plus "suspicious" (UI only, not in the contract). */
+export type DisplayStatus = WatchStatus | "suspicious";
+
 export interface ScreenWatcher {
-  /** Latest status, or null before the first result. */
+  /** Latest raw status from the checks (with "stuck" decided here), or null before the first result. */
   status: WatchStatus | null;
+  /**
+   * Status to show in pills: like status, but distraction is staged. Under 15 s off task it
+   * keeps the previous value, 15-45 s is "suspicious", 45 s+ is "distracted" (5 s / 15 s in demo).
+   */
+  displayStatus: DisplayStatus | null;
   reason: string;
   mascotLine: string;
   pose: MascotPose;
@@ -76,6 +89,7 @@ function startErrorMessage(e: unknown): string {
 
 export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatcher {
   const [status, setStatus] = useState<WatchStatus | null>(null);
+  const [displayStatus, setDisplayStatus] = useState<DisplayStatus | null>(null);
   const [reason, setReason] = useState("");
   const [mascotLine, setMascotLine] = useState("");
   const [pose, setPose] = useState<MascotPose>("idle");
@@ -140,18 +154,27 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
         lastProgressAtRef.current = now;
         offeredRef.current = false;
       }
-      // Distraction clock: starts on the first "distracted", cleared by focused/idle
-      // (stuck is a focused result). Failed or unknown checks leave it alone.
+      // Distraction clock: starts on the first "distracted", cleared when back on task
+      // (focused, stuck or idle). Failed or unknown checks leave it alone.
       if (res.ok && res.status === "distracted") distractedSinceRef.current ??= now;
-      else if (res.ok && (res.status === "focused" || res.status === "idle" || res.status === "stuck"))
-        distractedSinceRef.current = null;
-      const distractedFor = distractedSinceRef.current === null ? 0 : now - distractedSinceRef.current;
-      const escalateAfter = demoRef.current ? DEMO_DISTRACTED_ESCALATE_MS : DISTRACTED_ESCALATE_MS;
-      if (res.ok && res.status === "distracted" && distractedFor >= escalateAfter) {
+      else if (res.ok && res.status !== "unknown") distractedSinceRef.current = null;
+
+      if (res.ok && res.status === "distracted") {
         setStatus("distracted");
-        setReason(res.reason);
-        setMascotLine(escalatedLine(distractedFor));
-        setPose("no-free-reps");
+        const offFor = now - (distractedSinceRef.current ?? now);
+        const demo = demoRef.current;
+        if (offFor >= (demo ? DEMO_DISTRACTED_AFTER_MS : DISTRACTED_AFTER_MS)) {
+          setDisplayStatus("distracted");
+          setReason(res.reason);
+          setMascotLine(escalatedLine(offFor));
+          setPose("no-free-reps");
+        } else if (offFor >= (demo ? DEMO_SUSPICIOUS_AFTER_MS : SUSPICIOUS_AFTER_MS)) {
+          setDisplayStatus("suspicious");
+          setReason(res.reason);
+          setMascotLine(res.mascot_line);
+          setPose("side-eye");
+        }
+        // Under the first threshold: keep showing whatever was there (benefit of the doubt).
         return;
       }
 
@@ -159,6 +182,7 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
       const frozenFor = now - lastProgressAtRef.current;
       if (res.ok && res.status === "focused" && frozenFor >= stuckAfter) {
         setStatus("stuck");
+        setDisplayStatus("stuck");
         setReason(`No visible progress for ${formatDuration(frozenFor)}.`);
         setMascotLine(STUCK_LINE);
         setPose("spotting");
@@ -169,13 +193,16 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
         return;
       }
       // Only the clock above decides stuck; never pass a server "stuck" through.
-      setStatus(res.status === "stuck" ? "focused" : res.status);
+      const next: WatchStatus = res.status === "stuck" ? "focused" : res.status;
+      setStatus(next);
+      setDisplayStatus(next);
       setReason(res.reason);
       setMascotLine(res.mascot_line);
       setPose(res.pose);
     } catch {
       if (session !== sessionRef.current) return;
       setStatus("unknown");
+      setDisplayStatus("unknown");
       setReason("Couldn't reach the coach. Retrying next check.");
     } finally {
       if (session === sessionRef.current) busyRef.current = false;
@@ -217,6 +244,7 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
         lastProgressAtRef.current = Date.now(); // the stuck clock starts when sharing does
         setOfferHint(false);
         setStatus(null);
+        setDisplayStatus(null);
         setReason("");
         setMascotLine("I'm watching. Lift.");
         setPose("idle");
@@ -250,6 +278,7 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
 
   return {
     status,
+    displayStatus,
     reason,
     mascotLine,
     pose,

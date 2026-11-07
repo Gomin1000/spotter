@@ -218,15 +218,17 @@ export default function Home() {
   }
 
   // ---------- Pose ----------
-  // no-free-reps after a refusal > side-eye when distracted > flex when solved
-  // > spotting while hinting or stuck > idle
+  // no-free-reps after a refusal > watch mode's pose when suspicious/distracted
+  // (side-eye, then no-free-reps) > flex when solved > spotting while hinting or stuck > idle
 
-  const watchingStatus = watcher.isWatching ? watcher.status : null;
+  const watchingStatus = watcher.isWatching ? watcher.displayStatus : null;
+  const offTask = watchingStatus === "suspicious" || watchingStatus === "distracted";
   let pose: MascotPose = "idle";
   if (refused) pose = "no-free-reps";
-  else if (watchingStatus === "distracted") pose = watcher.pose === "no-free-reps" ? "no-free-reps" : "side-eye";
+  else if (offTask) pose = watcher.pose;
   else if (solvedWith != null) pose = "flex";
   else if (hintBusy || watchingStatus === "stuck" || lastFromHint) pose = "spotting";
+  const cue = !refused && watchingStatus === "distracted" ? "Caught you slacking" : undefined;
 
   function scrollToWatchCard() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -257,6 +259,7 @@ export default function Home() {
           <Mascot
             pose={pose}
             line={line}
+            cue={cue}
             aside={
               watchingStatus && (
                 <button

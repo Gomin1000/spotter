@@ -10,8 +10,8 @@
   --coral: #ff6b5f;
   --sun: #f4d35e;
   --plate-green: #3a9d5d; /* step 1, focused */
-  --plate-yellow: #e8b931; /* step 2, stuck */
-  --plate-blue: #2f6fd6; /* step 3 */
+  --plate-yellow: #e8b931; /* step 2, suspicious */
+  --plate-blue: #2f6fd6; /* step 3, stuck */
   --plate-red: #d7352f; /* step 4, distracted */
   --plate-grey: #cbd2da; /* idle */
 }

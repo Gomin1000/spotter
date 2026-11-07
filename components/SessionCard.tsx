@@ -1,5 +1,5 @@
 "use client";
-import { OPEN_IN_TAB_MESSAGE, type ScreenWatcher } from "@/lib/useScreenWatcher";
+import { DEMO_INTERVAL_MS, OPEN_IN_TAB_MESSAGE, WATCH_INTERVAL_MS, type ScreenWatcher } from "@/lib/useScreenWatcher";
 import { STATUS, btnSecondary, btnTag, divider, heading, label, statusPill, sticker } from "./ui";
 
 /** DOM id of the watch card, so the sticky strip's status pill can scroll to it. */
@@ -12,7 +12,8 @@ interface Props {
 }
 
 export function SessionCard({ watcher, canSpot, onAcceptSpot }: Props) {
-  const status = watcher.status ? STATUS[watcher.status] : null;
+  const status = watcher.displayStatus ? STATUS[watcher.displayStatus] : null;
+  const every = `${(watcher.demoMode ? DEMO_INTERVAL_MS : WATCH_INTERVAL_MS) / 1000} s`;
 
   // scroll-mt clears the sticky strip (under 180 px) when the strip's pill scrolls here.
   return (
@@ -31,7 +32,7 @@ export function SessionCard({ watcher, canSpot, onAcceptSpot }: Props) {
         />
         <Switch
           label="Demo speed"
-          hint={watcher.demoMode ? "Every 5 s" : "Every 20 s"}
+          hint={`Every ${every}`}
           checked={watcher.demoMode}
           onToggle={() => watcher.setDemoMode(!watcher.demoMode)}
         />
@@ -50,7 +51,7 @@ export function SessionCard({ watcher, canSpot, onAcceptSpot }: Props) {
         ) : (
           !watcher.error && (
             <p className="text-sm font-medium text-slate">
-              Share your screen and I&apos;ll check in every {watcher.demoMode ? "5" : "20"} s.
+              Share your screen and I&apos;ll check in every {every}.
             </p>
           )
         )}
