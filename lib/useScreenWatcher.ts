@@ -12,6 +12,12 @@ export const DEMO_INTERVAL_MS = 5_000;
 export const STUCK_AFTER_MS = 15 * 60_000;
 export const DEMO_STUCK_AFTER_MS = 45_000;
 const STUCK_LINE = "Form looks frozen, bro. Need a spot?";
+/** Still distracted after this long: side-eye escalates to no-free-reps. */
+export const DISTRACTED_ESCALATE_MS = 2 * 60_000;
+export const DEMO_DISTRACTED_ESCALATE_MS = 10_000;
+function escalatedLine(ms: number): string {
+  return `${formatDuration(ms)} off task? That's skipping leg day. Back to the bar.`;
+}
 export const OPEN_IN_TAB_MESSAGE = "Open Spotter in a tab to use watch mode";
 
 export interface ScreenWatcherOptions {
@@ -84,6 +90,7 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
   const busyRef = useRef(false);
   const lastProgressAtRef = useRef(0); // last time the screen showed progress
   const offeredRef = useRef(false); // already offered a hint in the current stuck stretch
+  const distractedSinceRef = useRef<number | null>(null); // first "distracted" in the current stretch
   const demoRef = useRef(options.demoMode ?? false);
   const sessionRef = useRef(0); // bumps on start/stop so late responses are ignored
   const titleRef = useRef(options.problemTitle);
@@ -102,6 +109,7 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
     busyRef.current = false;
     lastProgressAtRef.current = Date.now(); // starting (or stopping) resets the stuck clock
     offeredRef.current = false;
+    distractedSinceRef.current = null;
   }, []);
 
   const stop = useCallback(() => {
@@ -132,6 +140,21 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
         lastProgressAtRef.current = now;
         offeredRef.current = false;
       }
+      // Distraction clock: starts on the first "distracted", cleared by focused/idle
+      // (stuck is a focused result). Failed or unknown checks leave it alone.
+      if (res.ok && res.status === "distracted") distractedSinceRef.current ??= now;
+      else if (res.ok && (res.status === "focused" || res.status === "idle" || res.status === "stuck"))
+        distractedSinceRef.current = null;
+      const distractedFor = distractedSinceRef.current === null ? 0 : now - distractedSinceRef.current;
+      const escalateAfter = demoRef.current ? DEMO_DISTRACTED_ESCALATE_MS : DISTRACTED_ESCALATE_MS;
+      if (res.ok && res.status === "distracted" && distractedFor >= escalateAfter) {
+        setStatus("distracted");
+        setReason(res.reason);
+        setMascotLine(escalatedLine(distractedFor));
+        setPose("no-free-reps");
+        return;
+      }
+
       const stuckAfter = demoRef.current ? DEMO_STUCK_AFTER_MS : STUCK_AFTER_MS;
       const frozenFor = now - lastProgressAtRef.current;
       if (res.ok && res.status === "focused" && frozenFor >= stuckAfter) {
