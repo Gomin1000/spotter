@@ -4,10 +4,10 @@ import { RUNG_NAMES, type Rung } from "@/lib/api";
 import { LoadingLine } from "./LoadingLine";
 import { PLATE, btnOutline, input, label } from "./ui";
 
-export interface GivenHint {
-  rung: Rung;
-  text: string;
-}
+/** One entry in the training log: an unlocked step, or an answer about the user's code. */
+export type GivenHint =
+  | { kind: "step"; rung: Rung; text: string }
+  | { kind: "check"; rung: Rung; text: string; question: string };
 
 interface Props {
   hints: GivenHint[];
@@ -25,8 +25,10 @@ interface Props {
 
 export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpotMe, onTalk, solvedWith, onSolved }: Props) {
   const [message, setMessage] = useState("");
-  const done = hints.length >= 4;
-  const next = Math.min(hints.length + 1, 4) as Rung;
+  const steps = hints.filter((h) => h.kind === "step").length;
+  const done = steps >= 4;
+  const next = Math.min(steps + 1, 4) as Rung;
+  const checking = !!code.trim() || done;
 
   async function send() {
     const m = message.trim();
@@ -41,7 +43,7 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
           {hints.length > 0 && (
             <ol className="flex flex-col gap-7" aria-label="Training log">
               {hints.map((h, i) => (
-                <LogEntry key={i} hint={h} />
+                h.kind === "check" ? <CheckEntry key={i} question={h.question} text={h.text} /> : <LogEntry key={i} hint={h} />
               ))}
             </ol>
           )}
@@ -98,7 +100,7 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
             <input
               id="talk"
               className={input}
-              placeholder={hasProblem ? "Ask about the problem" : "Load a problem first"}
+              placeholder={!hasProblem ? "Load a problem first" : checking ? "Ask about your code" : "Ask about the problem"}
               value={message}
               disabled={!hasProblem}
               onChange={(e) => setMessage(e.target.value)}
@@ -110,6 +112,20 @@ export function HintLadder({ hints, hasProblem, busy, code, onCodeChange, onSpot
         </form>
       </div>
     </section>
+  );
+}
+
+/** A reply about the user's code: an empty ring instead of a plate, since no step was unlocked. */
+function CheckEntry({ question, text }: { question: string; text: string }) {
+  return (
+    <li className="grid grid-cols-[28px_1fr] gap-x-3">
+      <span aria-hidden className="mt-0.5 h-7 w-7 rounded-full border-2 border-dust/50" />
+      <div className="min-w-0">
+        <h3 className="font-display text-xl font-semibold leading-7">Code check</h3>
+        <p className="mt-0.5 text-sm text-dust">You asked: {question}</p>
+        <p className="mt-1 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>
+      </div>
+    </li>
   );
 }
 

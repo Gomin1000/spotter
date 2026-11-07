@@ -99,7 +99,7 @@ function ProblemView({
   const [ratingError, setRatingError] = useState<string | null>(null);
   const [showStatement, setShowStatement] = useState(false);
   const fromCodeforces = isCodeforcesUrl(problem.source_url);
-  const sourceLabel = loadedFrom && loadedFrom !== problem.title ? loadedFrom : hostOf(problem.source_url);
+  const sourceLabel = sourceLabelFor(problem, loadedFrom);
 
   async function reveal() {
     setRatingBusy(true);
@@ -199,6 +199,30 @@ function Weight({ rating, fromCodeforces }: { rating: RatingResponse; fromCodefo
       </p>
     </div>
   );
+}
+
+const SITES: [RegExp, string][] = [
+  [/(^|\.)leetcode\.(com|cn)$/i, "LeetCode"],
+  [/(^|\.)codeforces\.(com|ml|net)$/i, "Codeforces"],
+  [/(^|\.)atcoder\.jp$/i, "AtCoder"],
+  [/(^|\.)hackerrank\.com$/i, "HackerRank"],
+  [/(^|\.)kattis\.com$/i, "Kattis"],
+  [/(^|\.)cses\.fi$/i, "CSES"],
+];
+
+/**
+ * "On LeetCode" for known judges, "On example.com" for other links. The page title is only
+ * shown when it adds something; tab titles like "1. Two Sum" just repeat the problem name.
+ */
+function sourceLabelFor(problem: Problem, loadedFrom: string | null): string | null {
+  const host = hostOf(problem.source_url);
+  if (host) {
+    const site = SITES.find(([re]) => re.test(host))?.[1];
+    return `On ${site ?? host}`;
+  }
+  if (!loadedFrom) return null;
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return norm(loadedFrom).includes(norm(problem.title)) ? null : loadedFrom;
 }
 
 function hostOf(url: string | undefined): string | null {

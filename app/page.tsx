@@ -117,8 +117,11 @@ export default function Home() {
 
   // ---------- Hints ----------
 
-  const done = hints.length >= 4;
-  const nextRung = Math.min(hints.length + 1, 4) as Rung;
+  // Code-check answers live in the log too, but only real steps load plates.
+  const steps = hints.filter((h) => h.kind === "step");
+  const done = steps.length >= 4;
+  const nextRung = Math.min(steps.length + 1, 4) as Rung;
+  const currentRung = Math.max(steps.length, 1) as Rung;
 
   /** Asks for the next rung. Returns true if the request went through. */
   async function requestHint(user_message?: string): Promise<boolean> {
@@ -131,7 +134,7 @@ export default function Home() {
       const res = await getHint({
         problem,
         rung: nextRung,
-        previous_hints: hints.map((h) => h.text),
+        previous_hints: steps.map((h) => h.text),
         code: code.trim() || undefined,
         user_message,
       });
@@ -140,7 +143,7 @@ export default function Home() {
         setRefused(true);
         say(res.mascot_line || "No free reps.");
       } else if (res.ok && res.hint) {
-        setHints((h) => [...h, { rung: nextRung, text: res.hint }]);
+        setHints((h) => [...h, { kind: "step", rung: nextRung, text: res.hint }]);
         say(res.mascot_line || "There's your spot. Now lift.", true);
       } else {
         say(res.mascot_line || ERROR_LINES.hint);
@@ -154,8 +157,47 @@ export default function Home() {
     }
   }
 
+  /**
+   * Talk to Spotter. With code pasted (or after step 4) it asks a question about the code in
+   * "check" mode: the answer joins the log but never unlocks a step. Otherwise it asks for the
+   * next step with the message attached. Returns true if the request went through.
+   */
+  async function talk(user_message: string): Promise<boolean> {
+    const trimmedCode = code.trim();
+    if (!trimmedCode && !done) return requestHint(user_message);
+    if (!problem || hintBusy) return false;
+    setHintBusy(true);
+    setRefused(false);
+    setSolvedWith(null);
+    try {
+      const res = await getHint({
+        problem,
+        mode: "check",
+        rung: currentRung,
+        previous_hints: steps.map((h) => h.text),
+        code: trimmedCode || undefined,
+        user_message,
+      });
+      if (res.refused) {
+        setRefused(true);
+        say(res.mascot_line || "No free reps.");
+      } else if (res.ok && res.hint) {
+        setHints((h) => [...h, { kind: "check", rung: currentRung, text: res.hint, question: user_message }]);
+        say(res.mascot_line || "Look closer. It's in there.", true);
+      } else {
+        say(res.mascot_line || ERROR_LINES.hint);
+      }
+      return true;
+    } catch {
+      say(ERROR_LINES.hint);
+      return false;
+    } finally {
+      setHintBusy(false);
+    }
+  }
+
   function markSolved() {
-    const n = hints.length;
+    const n = steps.length;
     setSolvedWith(n);
     setRefused(false);
     const cheer = SOLVED_LINES[Math.floor(Math.random() * SOLVED_LINES.length)];
@@ -186,7 +228,7 @@ export default function Home() {
         {/* Pinned so side-eye, refusals and the loaded bar stay visible while scrolled down to the log. */}
         <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-2 border-b border-dust/20 bg-rubber px-4 pb-3 pt-3">
           <Mascot pose={pose} line={line} />
-          <Barbell loaded={hints.length} />
+          <Barbell loaded={steps.length} />
         </div>
 
         <div className="flex flex-col gap-10 pt-7">
@@ -206,7 +248,7 @@ export default function Home() {
             code={code}
             onCodeChange={setCode}
             onSpotMe={() => void requestHint()}
-            onTalk={(m) => requestHint(m)}
+            onTalk={talk}
             solvedWith={solvedWith}
             onSolved={markSolved}
           />
