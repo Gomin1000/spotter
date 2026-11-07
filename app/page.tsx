@@ -14,6 +14,7 @@ import { grabScreenOnce } from "@/lib/image";
 import { useExtensionBridge } from "@/lib/useExtensionBridge";
 import { usePasteImage } from "@/lib/usePasteImage";
 import { useScreenWatcher } from "@/lib/useScreenWatcher";
+import { Barbell } from "@/components/Barbell";
 import { HintLadder, type GivenHint } from "@/components/HintLadder";
 import { Mascot } from "@/components/Mascot";
 import { ProblemCard } from "@/components/ProblemCard";
@@ -173,45 +174,45 @@ export default function Home() {
   else if (hintBusy || watchingStatus === "stuck" || lastFromHint) pose = "spotting";
 
   return (
-    <div className="min-h-screen w-full bg-[radial-gradient(ellipse_at_top,#16264f_0%,#0b1430_55%,#070d22_100%)] text-[#e6ecff]">
-      <main className="mx-auto flex w-full max-w-[440px] flex-col gap-4 px-4 py-5">
-        <header className="flex items-center justify-between">
-          <h1 className="text-xl font-black tracking-tight">
-            <span className="text-[#5eead4]">Spot</span>
-            <span className="text-[#f472b6]">ter</span>
-          </h1>
-          <Link href="/install" className="text-xs font-semibold text-[#94a3c8] hover:text-[#5eead4]">
+    <div className="min-h-screen w-full bg-rubber text-chalk">
+      <main className="mx-auto flex w-full max-w-[400px] flex-col px-4 pb-12">
+        <header className="flex items-baseline justify-between pt-4">
+          <h1 className="font-display text-2xl font-bold">Spotter</h1>
+          <Link href="/install" className="text-sm text-dust underline-offset-4 hover:text-chalk hover:underline">
             Get the Chrome extension
           </Link>
         </header>
 
-        {/* Pinned so side-eye and refusals stay visible while scrolled down to the hints. */}
-        <div className="sticky top-0 z-20 -mx-4 border-b border-[#24345f]/70 bg-[#0b1430]/90 px-4 py-2 backdrop-blur-md">
+        {/* Pinned so side-eye, refusals and the loaded bar stay visible while scrolled down to the log. */}
+        <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-2 border-b border-dust/20 bg-rubber px-4 pb-3 pt-3">
           <Mascot pose={pose} line={line} />
+          <Barbell loaded={hints.length} />
         </div>
 
-        <ProblemCard
-          problem={problem}
-          loadedFrom={loadedFrom}
-          reading={reading}
-          onReadText={(text) => void read({ text })}
-          onReadScreen={readScreen}
-          onLine={(l) => say(l)}
-        />
+        <div className="flex flex-col gap-10 pt-7">
+          <ProblemCard
+            problem={problem}
+            loadedFrom={loadedFrom}
+            reading={reading}
+            onReadText={(text) => void read({ text })}
+            onReadScreen={readScreen}
+            onLine={(l) => say(l)}
+          />
 
-        <HintLadder
-          hints={hints}
-          hasProblem={!!problem}
-          busy={hintBusy}
-          code={code}
-          onCodeChange={setCode}
-          onSpotMe={() => void requestHint()}
-          onTalk={(m) => requestHint(m)}
-          solvedWith={solvedWith}
-          onSolved={markSolved}
-        />
+          <HintLadder
+            hints={hints}
+            hasProblem={!!problem}
+            busy={hintBusy}
+            code={code}
+            onCodeChange={setCode}
+            onSpotMe={() => void requestHint()}
+            onTalk={(m) => requestHint(m)}
+            solvedWith={solvedWith}
+            onSolved={markSolved}
+          />
 
-        <SessionCard watcher={watcher} canSpot={!!problem && !done && !hintBusy} onAcceptSpot={() => void requestHint()} />
+          <SessionCard watcher={watcher} canSpot={!!problem && !done && !hintBusy} onAcceptSpot={() => void requestHint()} />
+        </div>
       </main>
     </div>
   );

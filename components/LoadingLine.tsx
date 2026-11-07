@@ -10,9 +10,8 @@ export function LoadingLine({ className = "" }: { className?: string }) {
     return () => clearInterval(id);
   }, []);
   return (
-    <span className={`inline-flex items-center gap-2 text-sm text-[#5eead4] ${className}`} role="status">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-[#f472b6]" />
+    <p className={`text-sm text-dust ${className}`} role="status">
       {LOADING_LINES[i]}
-    </span>
+    </p>
   );
 }
