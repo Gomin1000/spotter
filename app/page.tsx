@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import {
   getHint,
   readProblem,
-  type MascotPose,
   type Problem,
   type ReadProblemRequest,
   type Rung,
@@ -16,7 +15,7 @@ import { usePasteImage } from "@/lib/usePasteImage";
 import { useScreenWatcher } from "@/lib/useScreenWatcher";
 import { Barbell } from "@/components/Barbell";
 import { HintLadder, type GivenHint } from "@/components/HintLadder";
-import { Mascot } from "@/components/Mascot";
+import { Mascot, type MascotArt } from "@/components/Mascot";
 import { ProblemCard } from "@/components/ProblemCard";
 import { SessionCard, WATCH_CARD_ID } from "@/components/SessionCard";
 import { STATUS, statusPill } from "@/components/ui";
@@ -33,7 +32,6 @@ export default function Home() {
   const [code, setCode] = useState("");
   const [refused, setRefused] = useState(false);
   const [line, setLine] = useState(HELLO);
-  const [lastFromHint, setLastFromHint] = useState(false);
   const [solvedWith, setSolvedWith] = useState<number | null>(null);
 
   const watcher = useScreenWatcher({ problemTitle: problem?.title });
@@ -46,13 +44,11 @@ export default function Home() {
     if (watcher.mascotLine) {
       setLine(watcher.mascotLine);
       setRefused(false);
-      setLastFromHint(false);
     }
   }
 
-  function say(text: string, fromHint = false) {
+  function say(text: string) {
     setLine(text);
-    setLastFromHint(fromHint);
   }
 
   // ---------- Reading the problem ----------
@@ -157,7 +153,7 @@ export default function Home() {
         say(res.mascot_line || "No free reps.");
       } else if (res.ok && res.hint) {
         setHints((h) => [...h, { kind: "step", rung: nextRung, text: res.hint }]);
-        say(res.mascot_line || "There's your spot. Now lift.", true);
+        say(res.mascot_line || "There's your spot. Now lift.");
       } else {
         say(res.mascot_line || ERROR_LINES.hint);
       }
@@ -196,7 +192,7 @@ export default function Home() {
         say(res.mascot_line || "No free reps.");
       } else if (res.ok && res.hint) {
         setHints((h) => [...h, { kind: "check", rung: currentRung, text: res.hint, question: user_message }]);
-        say(res.mascot_line || "Look closer. It's in there.", true);
+        say(res.mascot_line || "Look closer. It's in there.");
       } else {
         say(res.mascot_line || ERROR_LINES.hint);
       }
@@ -218,16 +214,18 @@ export default function Home() {
   }
 
   // ---------- Pose ----------
-  // no-free-reps after a refusal > watch mode's pose when suspicious/distracted
-  // (side-eye, then no-free-reps) > flex when solved > spotting while hinting or stuck > idle
+  // no-free-reps (refusal, or distracted) > side-eye (suspicious) > flex (solved)
+  // > spotting (stuck) > rep-N for the latest revealed step > idle.
+  // When a higher pose clears, the latest rep shows again.
 
   const watchingStatus = watcher.isWatching ? watcher.displayStatus : null;
   const offTask = watchingStatus === "suspicious" || watchingStatus === "distracted";
-  let pose: MascotPose = "idle";
+  let pose: MascotArt = "idle";
   if (refused) pose = "no-free-reps";
   else if (offTask) pose = watcher.pose;
   else if (solvedWith != null) pose = "flex";
-  else if (hintBusy || watchingStatus === "stuck" || lastFromHint) pose = "spotting";
+  else if (watchingStatus === "stuck") pose = "spotting";
+  else if (steps.length > 0) pose = `rep-${Math.min(steps.length, 4) as Rung}`;
   const cue = !refused && watchingStatus === "distracted" ? "Caught you slacking" : undefined;
 
   function scrollToWatchCard() {

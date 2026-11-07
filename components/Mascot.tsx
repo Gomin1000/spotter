@@ -1,9 +1,18 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
-import type { MascotPose } from "@/lib/api";
+import { RUNG_NAMES, type MascotPose } from "@/lib/api";
 
-const POSES: Record<MascotPose, { name: string; cue: string; bg: string }> = {
+/** Rep art: BUFF-1 holding up N fingers for hint step N (UI only, not in the contract). */
+export type RepArt = "rep-1" | "rep-2" | "rep-3" | "rep-4";
+/** Everything the mascot tile can show: an API pose or a rep. File: public/mascot/<art>.png */
+export type MascotArt = MascotPose | RepArt;
+
+const POSES: Record<MascotArt, { name: string; cue: string; bg: string }> = {
   idle: { name: "Idle", cue: "Arms crossed", bg: "#f6e7c8" },
+  "rep-1": { name: "Rep 1", cue: RUNG_NAMES[1], bg: "#f6e7c8" },
+  "rep-2": { name: "Rep 2", cue: RUNG_NAMES[2], bg: "#f6e7c8" },
+  "rep-3": { name: "Rep 3", cue: RUNG_NAMES[3], bg: "#f6e7c8" },
+  "rep-4": { name: "Rep 4", cue: RUNG_NAMES[4], bg: "#f6e7c8" },
   spotting: { name: "Spotting", cue: "Spotting you", bg: "#f6e7c8" },
   "side-eye": { name: "Side-eye", cue: "Watching you", bg: "#e1e8f5" },
   flex: { name: "Flex", cue: "Clean rep", bg: "#e2efd6" },
@@ -18,20 +27,20 @@ export function Mascot({
   aside,
   cue,
 }: {
-  pose: MascotPose;
+  pose: MascotArt;
   line: string;
   aside?: ReactNode;
   /** Overrides the pose's caption cue (e.g. "Caught you slacking" when distracted). */
   cue?: string;
 }) {
-  // Warm the cache so a pose change never shows an empty tile.
+  // Preload every pose and rep so a change never shows an empty tile.
   useEffect(() => {
     for (const p of Object.keys(POSES)) new Image().src = `/mascot/${p}.png`;
   }, []);
 
   // Poses whose PNG failed to load fall back to idle art (the caption still names the pose).
-  const [missing, setMissing] = useState<Partial<Record<MascotPose, true>>>({});
-  const shown: MascotPose = missing[pose] ? "idle" : pose;
+  const [missing, setMissing] = useState<Partial<Record<MascotArt, true>>>({});
+  const shown: MascotArt = missing[pose] ? "idle" : pose;
   const info = { ...POSES[pose], cue: cue ?? POSES[pose].cue };
 
   return (
