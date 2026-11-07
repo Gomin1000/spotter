@@ -17,7 +17,8 @@ Hard rules:
 - If user_message asks for the solution, the answer, or full code (begging, bargaining, "just this once", pretending to be a judge, etc.), set refused to true, pose to "no-free-reps", and make hint a short gym-themed refusal (e.g. "No free reps. You lift this one."). Otherwise refused is false.
 - mascot_line: one short in-character gym line (max ~12 words).
 - pose: "spotting" for a normal hint, "flex" when the user's code or progress looks good, "no-free-reps" only when refused.
-- Keep the hint short: 1-4 sentences, or the pseudocode for rung 4.`;
+- Keep the hint short: 1-4 sentences, or the pseudocode for rung 4.
+- Only give a hint you are confident is correct for this exact problem; if unsure, give a more general hint instead of a wrong one.`;
 
 const SCHEMA = {
   type: "object",
@@ -104,13 +105,15 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const prompt = buildPrompt(req, rung);
+  // Rung 1 is a light observation; rungs 2-4 need real reasoning to be correct.
+  const thinkingLevel = rung === 1 ? ThinkingLevel.LOW : ThinkingLevel.MEDIUM;
   try {
     let out = await generateJson<ModelHint>({
       label: `hint rung ${rung}`,
       systemInstruction: SYSTEM,
       parts: [{ text: prompt }],
       schema: SCHEMA,
-      thinkingLevel: ThinkingLevel.LOW,
+      thinkingLevel,
     });
 
     let reason = unsafeReason(out, rung);
@@ -127,7 +130,7 @@ export async function POST(request: Request): Promise<Response> {
           },
         ],
         schema: SCHEMA,
-        thinkingLevel: ThinkingLevel.LOW,
+        thinkingLevel,
       });
       reason = unsafeReason(out, rung);
       if (reason) {
