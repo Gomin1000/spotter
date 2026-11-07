@@ -1,0 +1,112 @@
+const poses = [
+  {
+    id: "idle",
+    name: "Idle",
+    cue: "Arms crossed",
+    line: "Locked in. What are we lifting?",
+  },
+  {
+    id: "spotting",
+    name: "Spotting",
+    cue: "Hands under the bar",
+    line: "One hint. You still do the rep.",
+  },
+  {
+    id: "side-eye",
+    name: "Side-eye",
+    cue: "You look distracted",
+    line: "That tab is not the problem statement.",
+  },
+  {
+    id: "flex",
+    name: "Flex",
+    cue: "Problem solved",
+    line: "Clean rep. Ship it.",
+  },
+  {
+    id: "no-free-reps",
+    name: "No free reps",
+    cue: "Finger wag",
+    line: "Nice try. No free reps.",
+  },
+];
+
+export default function App() {
+  return (
+    <main className="min-h-screen bg-[#f3f1e8] text-[#101827]">
+      <header className="border-b-4 border-[#101827] bg-[#38d6a1]">
+        <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-10 md:flex-row md:items-end md:justify-between md:px-10">
+          <div>
+            <p className="mb-3 font-mono text-xs font-bold uppercase tracking-[0.28em]">
+              Spotter mascot system / v1.0
+            </p>
+            <h1 className="max-w-3xl text-5xl font-black uppercase leading-[0.88] tracking-[-0.055em] sm:text-7xl">
+              Your coding
+              <br />
+              side-kick.
+            </h1>
+          </div>
+          <div className="max-w-sm border-l-4 border-[#101827] pl-5">
+            <p className="text-lg font-bold leading-tight">
+              It spots you.
+              <br />
+              It never lifts for you.
+            </p>
+            <p className="mt-3 font-mono text-xs font-bold uppercase tracking-wider">
+              5 poses · transparent PNG · 1024 × 1024
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <section className="mx-auto max-w-7xl px-6 py-8 md:px-10 md:py-12">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
+          {poses.map((pose, index) => (
+            <article
+              key={pose.id}
+              className={`group overflow-hidden border-4 border-[#101827] bg-white ${
+                index < 2 ? "lg:col-span-3" : "lg:col-span-2"
+              }`}
+            >
+              <div className="relative aspect-square overflow-hidden bg-[#dff8ef]">
+                <span className="absolute left-4 top-4 z-10 border-2 border-[#101827] bg-[#ff6b5f] px-2 py-1 font-mono text-[10px] font-black uppercase tracking-widest">
+                  0{index + 1}
+                </span>
+                <img
+                  className="h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-[1.035]"
+                  src={`/mascot/${pose.id}.png`}
+                  alt={`Spotter mascot ${pose.cue.toLowerCase()}`}
+                />
+              </div>
+              <div className="border-t-4 border-[#101827] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-black uppercase tracking-tight">{pose.name}</h2>
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-[#475569]">
+                      {pose.cue}
+                    </p>
+                  </div>
+                  <a
+                    className="border-2 border-[#101827] bg-[#f4d35e] px-3 py-2 font-mono text-[10px] font-black uppercase tracking-wider shadow-[3px_3px_0_#101827] transition-transform hover:-translate-y-0.5 active:translate-x-[3px] active:translate-y-[3px] active:shadow-none"
+                    href={`/mascot/${pose.id}.png`}
+                    download={`spotter-${pose.id}.png`}
+                  >
+                    PNG ↓
+                  </a>
+                </div>
+                <p className="mt-4 border-t-2 border-dashed border-[#101827]/30 pt-3 text-sm font-bold">
+                  “{pose.line}”
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <footer className="mt-10 flex flex-col gap-3 border-t-4 border-[#101827] pt-5 font-mono text-xs font-bold uppercase tracking-widest sm:flex-row sm:items-center sm:justify-between">
+          <p>Built for narrow-window coaching</p>
+          <p>Heavy problems. Honest reps.</p>
+        </footer>
+      </section>
+    </main>
+  );
+}
