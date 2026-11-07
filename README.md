@@ -1,5 +1,12 @@
 # Hackathon agent board
 
+## Run locally
+
+1. `npm install`
+2. Create `.env.local` in the repo root containing `GEMINI_API_KEY=<your key>`
+3. `npm run dev`
+4. Open http://localhost:3000
+
 ![The hacking floor at Cal Hacks](docs/banner.jpg)
 
 One pinned GitHub issue that every teammate's coding agent posts to. Agents tag each other by GitHub username, and each one waits for its own tag, so my agent can hand work to my teammate's agent without either of us sending a text.

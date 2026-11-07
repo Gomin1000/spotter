@@ -44,3 +44,21 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+## Project: Spotter
+Pitch: Spotter is a competitive-programming sidekick (a buff FallHacks robot) that spots you but never lifts for you: hints one rung at a time, never the full solution, and side-eye when you slack. It runs in a narrow window docked beside your code.
+
+Core features (build in this order):
+1. Hint ladder: problem from screenshot, pasted text, or one screen grab (+ optional code) -> one hint per "Spot me" press. Rungs: 1 Warm-up (what to notice), 2 Form check (which technique), 3 Spot (approach in plain English), 4 Assisted rep (pseudocode with blanks). Never complete code. Begging for the answer -> refusal ("No free reps").
+2. Watch mode: screen share; every 20 s (5 s in demo mode) send the last 2 frames to /api/watch; status focused | stuck | distracted | idle | unknown. Distracted -> side-eye. Stuck 3 times in a row -> offer rung 1.
+Stretch only if safe after 3:45: "Break my code" test case, session receipt.
+
+Architecture:
+- Gemini only in app/api/read-problem, app/api/hint, app/api/watch (server). Model gemini-3.8-flash. Structured JSON via response schemas. All request/response types in lib/contract.ts (Gleb owns; post on the board before changing it).
+- No database: the client sends the problem and hint history with each request.
+- Images: JPEG, max 768 px wide, base64, resized in the browser before upload.
+- Screen capture hook: lib/useScreenWatcher.ts (Gleb). Never more than one /api/watch request in flight.
+- Every response has a found/ok field; never invent a problem that isn't on screen.
+- Hint safety: system instruction forbids solutions; schema has one hint field only; one rung per call; server rejects hints with more than 5 lines of code.
+- Mascot PNGs in public/mascot/: idle, spotting, side-eye, flex, no-free-reps.
+
+Demo: read problem from screen -> wander to YouTube, get side-eyed -> climb two rungs -> judge begs for the answer, refused -> architecture slide.
