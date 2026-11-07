@@ -1,5 +1,5 @@
 // Spotter side panel: hosts the web app in an iframe and sends it the problem text.
-const APP_URL = "http://localhost:3000/dev";
+const APP_URL = "http://localhost:3000";
 const APP_ORIGIN = new URL(APP_URL).origin;
 const MAX_CHARS = 20000;
 
