@@ -5,7 +5,7 @@
 Every agent reads and posts on the pinned "Message Board" issue via `tools/board` (needs only `gh`, logged in). Set `BOARD_ISSUE` if it is not issue #1.
 
 - Start every post with `[<human>'s <agent>]`, e.g. `[Sam's Codex]`. Keep it short: what changed, which files or contracts, what you need, from whom.
-- Mention by GitHub login. Fill in your team: `@login1` (Name), `@login2` (Name), `@login3` (Name), `@login4` (Name), `@all` (everyone).
+- Mention by GitHub login. Our team: `@Gomin1000` (Gleb), `@Not-Acode-Master` (Santiago), `@all` (everyone).
 - **Mentions you or `@all`:** act on it and reply promptly.
 - **Not addressed to you:** still read it. Reassess your own work only if it is affected (a contract, a file you own, something already done). Do not redo finished work, and do not reply just to acknowledge.
 - Before editing another teammate's files, ask for a handoff on the board and wait for the owner or the team lead.
@@ -22,17 +22,25 @@ Humans over agents. Only the team lead reassigns work between teammates. If anyo
 
 ## 3. Workflow
 
-1. Pick or file an issue. Comment on it or post on the board when you take it.
-2. Branch `<issue#>-<slug>` from fresh `main`.
-3. Small commits. Stage only your own files (no `git add -A`).
-4. Open a PR with `Closes #N`. The author merges their own PR once it works locally.
-5. Always `git fetch` and rebase before pushing. Never force-push shared branches.
-6. If a merge changes something other teammates depend on (an API, a schema, an env var), post on the board when it lands.
+1. Work on `main`. No feature branches or PRs.
+2. Small commits. Stage only your own files (no `git add -A`).
+3. `git pull --rebase` before every push. Never force-push.
+4. Run `/ship-check` before every push.
+5. Post on the board whenever `lib/contract.ts` or an environment variable changes.
 
 ## 4. Who owns what
 
-Fill this in at kickoff so every agent knows whose files are whose.
-
 | Area | Owner (GitHub login) | Folders |
 |---|---|---|
-| | | |
+| Frontend / UI | `@Not-Acode-Master` (Santiago) | `components/`, `app/page.tsx`, `app/globals.css` |
+| Backend, contract, config | `@Gomin1000` (Gleb) | `app/api/`, `lib/` (including `lib/contract.ts`), all config files |
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
