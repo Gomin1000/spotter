@@ -79,7 +79,16 @@ export interface WatchRequest {
 
 export interface WatchResponse {
   ok: boolean;
+  /**
+   * From /api/watch: focused | distracted | idle | unknown (never "stuck").
+   * useScreenWatcher turns "focused" into "stuck" after a long time without progress.
+   */
   status: WatchStatus;
+  /**
+   * True if the frames show meaningful progress (code edited, scrolled, new page or tab,
+   * new test output). False if the same content is just sitting there. True for a single frame.
+   */
+  changed: boolean;
   reason: string;
   mascot_line: string;
   pose: MascotPose;
@@ -137,6 +146,7 @@ export const MOCK_HINT_RESPONSE: HintResponse = {
 export const MOCK_WATCH_RESPONSE: WatchResponse = {
   ok: true,
   status: "distracted",
+  changed: true,
   reason: "The newest frame shows a YouTube video instead of the editor or problem page.",
   mascot_line: "That's not the problem. Back to the bench.",
   pose: "side-eye",

@@ -1,13 +1,17 @@
 "use client";
 // Watch mode: keeps one screen share open, sends the last 2 frames to /api/watch
-// every 20 s (5 s in demo mode), and offers a hint after 3 "stuck" results in a row.
+// every 20 s (5 s in demo mode). "Stuck" means a coding/problem screen with no visible
+// progress for STUCK_AFTER_MS (45 s in demo mode); then it offers a hint.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { watch, type MascotPose, type WatchStatus } from "./api";
 import { captureVideoFrame } from "./image";
 
 export const WATCH_INTERVAL_MS = 20_000;
 export const DEMO_INTERVAL_MS = 5_000;
-export const STUCK_TO_OFFER = 3;
+/** No visible progress on a coding/problem screen for this long counts as stuck. */
+export const STUCK_AFTER_MS = 15 * 60_000;
+export const DEMO_STUCK_AFTER_MS = 45_000;
+const STUCK_LINE = "Form looks frozen, bro. Need a spot?";
 export const OPEN_IN_TAB_MESSAGE = "Open Spotter in a tab to use watch mode";
 
 export interface ScreenWatcherOptions {
@@ -23,7 +27,7 @@ export interface ScreenWatcher {
   reason: string;
   mascotLine: string;
   pose: MascotPose;
-  /** True after 3 consecutive "stuck" results. Reset with dismissOffer() or stop(). */
+  /** True once stuck (no progress for 15 min, 45 s in demo mode). Reset with dismissOffer() or stop(). */
   offerHint: boolean;
   dismissOffer: () => void;
   isWatching: boolean;
@@ -36,6 +40,11 @@ export interface ScreenWatcher {
   error: string | null;
   /** Opens the app in a new tab (for when watch mode is blocked in the extension side panel). */
   openInTab: () => void;
+}
+
+function formatDuration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  return s < 120 ? `${s} s` : `${Math.round(s / 60)} min`;
 }
 
 function inIframe(): boolean {
@@ -73,11 +82,14 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const framesRef = useRef<string[]>([]);
   const busyRef = useRef(false);
-  const stuckRef = useRef(0);
+  const lastProgressAtRef = useRef(0); // last time the screen showed progress
+  const offeredRef = useRef(false); // already offered a hint in the current stuck stretch
+  const demoRef = useRef(options.demoMode ?? false);
   const sessionRef = useRef(0); // bumps on start/stop so late responses are ignored
   const titleRef = useRef(options.problemTitle);
   useEffect(() => {
     titleRef.current = options.problemTitle;
+    demoRef.current = demoMode;
   });
 
   const teardown = useCallback(() => {
@@ -88,7 +100,8 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
     videoRef.current = null;
     framesRef.current = [];
     busyRef.current = false;
-    stuckRef.current = 0;
+    lastProgressAtRef.current = Date.now(); // starting (or stopping) resets the stuck clock
+    offeredRef.current = false;
   }, []);
 
   const stop = useCallback(() => {
@@ -112,20 +125,31 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
     try {
       const res = await watch({ frames_base64: framesRef.current, problem_title: titleRef.current });
       if (session !== sessionRef.current) return;
-      setStatus(res.status);
+      const now = Date.now();
+      // Progress, or a break from the problem, restarts the stuck clock.
+      // A failed or unknown check neither restarts it nor counts as stuck.
+      if (res.ok && (res.changed || res.status === "distracted" || res.status === "idle")) {
+        lastProgressAtRef.current = now;
+        offeredRef.current = false;
+      }
+      const stuckAfter = demoRef.current ? DEMO_STUCK_AFTER_MS : STUCK_AFTER_MS;
+      const frozenFor = now - lastProgressAtRef.current;
+      if (res.ok && res.status === "focused" && frozenFor >= stuckAfter) {
+        setStatus("stuck");
+        setReason(`No visible progress for ${formatDuration(frozenFor)}.`);
+        setMascotLine(STUCK_LINE);
+        setPose("spotting");
+        if (!offeredRef.current) {
+          offeredRef.current = true;
+          setOfferHint(true);
+        }
+        return;
+      }
+      // Only the clock above decides stuck; never pass a server "stuck" through.
+      setStatus(res.status === "stuck" ? "focused" : res.status);
       setReason(res.reason);
       setMascotLine(res.mascot_line);
       setPose(res.pose);
-      if (!res.ok) return; // a failed check doesn't break or extend a stuck streak
-      if (res.status === "stuck") {
-        stuckRef.current++;
-        if (stuckRef.current >= STUCK_TO_OFFER) {
-          stuckRef.current = 0;
-          setOfferHint(true);
-        }
-      } else {
-        stuckRef.current = 0;
-      }
     } catch {
       if (session !== sessionRef.current) return;
       setStatus("unknown");
@@ -167,6 +191,7 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
         await video.play();
         if (session !== sessionRef.current) return;
         setIsWatching(true);
+        lastProgressAtRef.current = Date.now(); // the stuck clock starts when sharing does
         setOfferHint(false);
         setStatus(null);
         setReason("");

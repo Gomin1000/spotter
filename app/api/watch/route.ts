@@ -8,32 +8,35 @@ export const maxDuration = 60;
 const SYSTEM = `You are Spotter, a buff gym-bro robot coach watching a competitive programmer's screen through periodic screenshots. Classify what the user is doing in the NEWEST frame (the last image), using the earlier frame only for comparison.
 Spotter itself is NEVER a distraction: ignore Spotter's own UI (a narrow side panel, usually on the right, with the Spotter robot mascot, hints or "Spot me" buttons, or a Spotter page in the browser) and judge only the rest of the screen. If Spotter's UI is the only thing visible, the status is focused.
 Statuses:
-- focused: a coding problem, code editor, terminal, or online-judge page is visible and the user is working on it (code changed, different part of the problem, new submission, etc.).
-- stuck: two frames are given and the same code/error/verdict is visible in both with no meaningful change. Only use stuck when there are two frames.
+- focused: a coding problem, code editor, terminal, or online-judge page is visible. Use focused even if nothing changed between the frames: thinking time is normal, and the app decides on its own when the user is stuck.
 - distracted: video sites, social media, chat apps, games, shopping, news, or any other content unrelated to the problem.
 - idle: lock screen, screensaver, or a blank desktop with nothing happening.
 - unknown: you can't tell (black frame, unreadable, ambiguous).
 Output rules:
+- changed: compare the two frames. true if there is meaningful progress: code edited, the page scrolled, a new page or tab, new test or judge output, a new submission. false if the same content is just sitting there (a blinking cursor, a ticking clock, or a moved mouse don't count). With only one frame, changed is true.
 - reason: ONE short generic sentence about what kind of content is visible (e.g. "A video site is open instead of the editor."). NEVER mention names, usernames, message contents, email addresses, video titles, or any personal info seen on screen.
-- mascot_line: one short in-character gym-bro line (max ~12 words). distracted: a playful side-eye roast to get back to the bench. focused: encouragement. stuck: offer help, like "Want a spot?". idle/unknown: a light check-in. Keep it generic like reason: NEVER mention names, usernames, message contents, email addresses, video titles, or anything specific seen on screen (say "videos", not what the video is about).
-- pose: "side-eye" for distracted, "spotting" for stuck, "flex" or "idle" for focused, "idle" for idle or unknown.
+- mascot_line: one short in-character gym-bro line (max ~12 words). distracted: a playful side-eye roast to get back to the bench. focused: encouragement. idle/unknown: a light check-in. Keep it generic like reason: NEVER mention names, usernames, message contents, email addresses, video titles, or anything specific seen on screen (say "videos", not what the video is about).
+- pose: "side-eye" for distracted, "flex" or "idle" for focused, "idle" for idle or unknown.
 - Never claim to see a problem or code that isn't actually on screen.`;
 
-const STATUSES: WatchStatus[] = ["focused", "stuck", "distracted", "idle", "unknown"];
+// The model never says "stuck": useScreenWatcher decides that from time without progress.
+const STATUSES: WatchStatus[] = ["focused", "distracted", "idle", "unknown"];
 
 const SCHEMA = {
   type: "object",
   properties: {
     status: { type: "string", enum: STATUSES },
+    changed: { type: "boolean" },
     reason: { type: "string" },
     mascot_line: { type: "string" },
     pose: { type: "string", enum: ["idle", "spotting", "side-eye", "flex"] },
   },
-  required: ["status", "reason", "mascot_line", "pose"],
+  required: ["status", "changed", "reason", "mascot_line", "pose"],
 };
 
 interface ModelWatch {
   status: WatchStatus;
+  changed: boolean;
   reason: string;
   mascot_line: string;
   pose: MascotPose;
@@ -56,7 +59,7 @@ function poseFor(status: WatchStatus, modelPose: MascotPose): MascotPose {
 }
 
 function fail(reason: string, mascot_line = "Lost sight of you for a sec. Keep lifting."): Response {
-  const body: WatchResponse = { ok: false, status: "unknown", reason, mascot_line, pose: "idle" };
+  const body: WatchResponse = { ok: false, status: "unknown", changed: false, reason, mascot_line, pose: "idle" };
   return Response.json(body);
 }
 
@@ -82,7 +85,7 @@ export async function POST(request: Request): Promise<Response> {
   const title = req.problem_title?.trim().slice(0, 200);
   parts.push({
     text: `${title ? `The user is working on the problem "${title}".` : "No problem is loaded yet."} ${
-      frames.length === 1 ? "Only one frame, so do not answer stuck." : ""
+      frames.length === 1 ? "Only one frame, so changed is true." : "Compare the two frames for changed."
     } Classify the newest frame.`.trim(),
   });
 
@@ -94,11 +97,11 @@ export async function POST(request: Request): Promise<Response> {
       schema: SCHEMA,
       thinkingLevel: ThinkingLevel.LOW, // lowest level gemini-3.8-flash accepts (MINIMAL -> 400)
     });
-    let status: WatchStatus = STATUSES.includes(out.status) ? out.status : "unknown";
-    if (status === "stuck" && frames.length < 2) status = "focused";
+    const status: WatchStatus = STATUSES.includes(out.status) ? out.status : "unknown";
     const body: WatchResponse = {
       ok: true,
       status,
+      changed: frames.length < 2 || out.changed !== false,
       reason: out.reason || "Checked your screen.",
       mascot_line: out.mascot_line || DEFAULT_LINES[status],
       pose: poseFor(status, out.pose),
