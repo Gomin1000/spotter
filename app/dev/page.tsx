@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { grabScreenOnce, resizeToJpegBase64 } from "@/lib/image";
 import { usePasteImage } from "@/lib/usePasteImage";
+import { useExtensionBridge } from "@/lib/useExtensionBridge";
 
 export default function DevPage() {
   const [imageB64, setImageB64] = useState<string | null>(null);
@@ -71,6 +72,29 @@ export default function DevPage() {
     },
     (message) => setOutput(message),
   );
+
+  // "Read this page" in the Chrome extension side panel.
+  useExtensionBridge({
+    onStart: (page) => {
+      setBusy(true);
+      setOutput(`extension: reading "${page.title || page.url}"…`);
+    },
+    onResult: (res, page) => {
+      setBusy(false);
+      if (res.found_problem && res.problem) {
+        setProblem(res.problem);
+        setHints([]);
+        setRung(1);
+      }
+      setOutput(`extension: ${page.url}
+${JSON.stringify(res, null, 2)}`);
+    },
+    onError: (message) => {
+      setBusy(false);
+      setOutput(`extension ERROR
+${message}`);
+    },
+  });
 
   function onRead(image: string | null = imageB64) {
     run("readProblem", async () => {
