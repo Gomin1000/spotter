@@ -50,9 +50,10 @@ export interface HintRequest {
   code?: string;
   user_message?: string;
   /**
-   * "hint" (default) = give rung `rung`. "check" = answer user_message about `code`
-   * (where it breaks, never the fix) without a new step; send the current rung
-   * (highest given, or 1), and the response echoes it.
+   * "hint" (default) = give rung `rung`. "check" = answer user_message without a new step:
+   * about `code` if pasted (where it breaks, never the fix), else about the problem.
+   * Send the current rung (highest given, or 1); the response echoes it, and the answer
+   * never goes past that step.
    */
   mode?: "hint" | "check";
 }

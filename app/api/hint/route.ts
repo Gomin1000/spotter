@@ -57,16 +57,24 @@ function realCodeLines(text: string): number {
 const RUNG1_BANNED =
   /\b(bipartite|dp|dynamic programming|memoi[sz]\w*|two[- ]pointers?|sliding window|greedy|binary search|bfs|dfs|breadth[- ]first|depth[- ]first|dijkstra|bellman|floyd|prefix sums?|suffix sums?|difference array|segment tree|fenwick|bit tree|sparse table|union[- ]find|dsu|disjoint set|topological|toposort|dag|strongly connected|connected components?|spanning tree|mst|kruskal|prim'?s|bridges?|articulation|lca|hash ?(map|set|ing)|heap|priority queue|monotonic|deque|stack|bitmasks?|backtracking|divide and conquer|sieve|kmp|z-function|trie|meet in the middle|knapsack|graph colou?ring|two[- ]colou?ring)\b/i;
 
+/**
+ * Shape and safety checks. In check mode `rung` is the user's current step, so the same
+ * rules hold the answer at that step: no technique names at step 1, max 5 real code lines,
+ * and at step 4 any code beyond one quoted line must use ___ blanks.
+ */
 function unsafeReason(out: ModelHint, rung: Rung, check: boolean): string | null {
   if (out.refused) return null;
-  // Check mode talks about the user's own code, so the rung-shape rules don't apply; the code limit does.
-  if (check) return realCodeLines(out.hint) > 5 ? "it contained more than 5 lines of real code" : null;
   if (rung === 1) {
     const term = out.hint.match(RUNG1_BANNED)?.[0];
-    if (term) return `the rung 1 hint named a technique or property ("${term}"); rung 1 only points at an observation in the statement`;
+    if (term)
+      return check
+        ? `the answer named a technique or property ("${term}") but the user is only at step 1, where no technique has been revealed`
+        : `the rung 1 hint named a technique or property ("${term}"); rung 1 only points at an observation in the statement`;
   }
-  if (realCodeLines(out.hint) > 5) return "it contained more than 5 lines of real code";
-  if (rung === 4 && !out.hint.includes("___")) return "the rung 4 pseudocode had no ___ blanks";
+  const codeLines = realCodeLines(out.hint);
+  if (codeLines > 5) return "it contained more than 5 lines of real code";
+  if (rung === 4 && !out.hint.includes("___") && (!check || codeLines > 1))
+    return check ? "it showed code at step 4 without ___ blanks" : "the rung 4 pseudocode had no ___ blanks";
   return null;
 }
 
@@ -86,6 +94,21 @@ function safeWarmUp(): HintResponse {
   };
 }
 
+/** Check-mode fallback when the answer keeps going past the user's current step. No new step. */
+function holdAtStep(rung: Rung): HintResponse {
+  return {
+    ok: true,
+    rung,
+    hint:
+      rung === 4
+        ? "Answering that would lift it for you. Fill in the blanks from step 4 first."
+        : `Answering that would give away more than step ${rung}. Press Spot me when you want the next step.`,
+    refused: false,
+    mascot_line: "One rep at a time.",
+    pose: "spotting",
+  };
+}
+
 function refusal(rung: Rung): HintResponse {
   return {
     ok: true,
@@ -97,12 +120,22 @@ function refusal(rung: Rung): HintResponse {
   };
 }
 
-const CHECK_RULES = `REQUESTED: form check on the user's code (no new hint step). Answer USER MESSAGE about USER'S CODE:
+const CODE_CHECK_RULES = `REQUESTED: form check on the user's code (no new hint step). Answer USER MESSAGE about USER'S CODE:
 - Point to WHERE it breaks: a specific line (quote at most one short line) or a concrete input case that fails, and say what goes wrong there.
 - NEVER write the fix, corrected code, or a replacement line. Don't explain the full approach.
-- Don't reveal more of the solution idea than PREVIOUS HINTS already did.
 - If the code looks right, say so and suggest one edge case to test.
 - If USER MESSAGE asks for the solution or the fixed code, refuse as described in the rules.`;
+
+const QUESTION_RULES = `REQUESTED: answer USER MESSAGE (no new hint step, no code pasted). It is a question about the problem or the hints so far:
+- Clarify the statement, a sample, a constraint, or what a previous hint meant. 1-3 sentences.
+- Don't give the next step's hint, the approach, or any code.
+- If USER MESSAGE asks for the solution, the approach, or code, refuse as described in the rules.`;
+
+function checkRules(req: HintRequest, rung: Rung): string {
+  const base = req.code?.trim() ? CODE_CHECK_RULES : QUESTION_RULES;
+  return `${base}
+- The user is at step ${rung} (${RUNG_NAMES[rung]}). Reveal NOTHING beyond what PREVIOUS HINTS already said. For reference, step ${rung} allows at most: ${RUNG_RULES[rung]}`;
+}
 
 function buildPrompt(req: HintRequest, rung: Rung): string {
   const p = req.problem;
@@ -121,7 +154,7 @@ function buildPrompt(req: HintRequest, rung: Rung): string {
     req.user_message?.trim() ? `USER MESSAGE: ${req.user_message.slice(0, 2000)}` : "",
     "",
     req.mode === "check"
-      ? CHECK_RULES
+      ? checkRules(req, rung)
       : `REQUESTED: rung ${rung} (${RUNG_NAMES[rung]}). ${RUNG_RULES[rung]}`,
   ];
   return lines.filter((l, i, a) => l !== "" || a[i - 1] !== "").join("\n");
@@ -140,15 +173,16 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(failure(rung, "No problem loaded yet. Show me the problem first."));
   }
 
+  // Check mode: answer user_message (about the code, or the problem if no code) without a new step.
   const check = req.mode === "check";
-  if (check && !req.code?.trim()) {
-    return Response.json(failure(rung, "Paste your code and I'll check your form."));
+  if (check && !req.user_message?.trim() && !req.code?.trim()) {
+    return Response.json(failure(rung, "Ask me something, or paste your code and I'll check your form."));
   }
 
   const prompt = buildPrompt(req, rung);
   // Rung 1 is a light observation; rungs 2-4 need real reasoning to be correct.
   const thinkingLevel = rung === 1 && !check ? ThinkingLevel.LOW : ThinkingLevel.MEDIUM;
-  const label = check ? `code check (rung ${rung})` : `hint rung ${rung}`;
+  const label = check ? `${req.code?.trim() ? "code check" : "question"} (step ${rung})` : `hint rung ${rung}`;
   try {
     let out = await generateJson<ModelHint>({
       label,
@@ -167,7 +201,7 @@ export async function POST(request: Request): Promise<Response> {
         parts: [
           {
             text: `${prompt}\n\nSTRICT: your previous answer was rejected because ${reason}. Write NO real code at all.${
-              rung === 4 && !check ? " Use language-neutral pseudocode, max 8 lines, and replace every key line with ___ blanks." : ""
+              rung === 4 ? " Any pseudocode must be language-neutral pseudocode, max 8 lines, and replace every key line with ___ blanks." : ""
             }`,
           },
         ],
@@ -177,8 +211,9 @@ export async function POST(request: Request): Promise<Response> {
       reason = unsafeReason(out, rung, check);
       if (reason) {
         const warmUp = rung === 1 && !check;
-        console.warn(`[hint] ${label} rejected again (${reason}); ${warmUp ? "using safe warm-up" : "refusing"}`);
-        return Response.json(warmUp ? safeWarmUp() : refusal(rung));
+        const fallback = check ? "holding at this step" : warmUp ? "using safe warm-up" : "refusing";
+        console.warn(`[hint] ${label} rejected again (${reason}); ${fallback}`);
+        return Response.json(check ? holdAtStep(rung) : warmUp ? safeWarmUp() : refusal(rung));
       }
     }
 
