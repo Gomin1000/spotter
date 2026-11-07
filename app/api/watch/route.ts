@@ -15,7 +15,7 @@ Statuses:
 - unknown: you can't tell (black frame, unreadable, ambiguous).
 Output rules:
 - reason: ONE short generic sentence about what kind of content is visible (e.g. "A video site is open instead of the editor."). NEVER mention names, usernames, message contents, email addresses, video titles, or any personal info seen on screen.
-- mascot_line: one short in-character gym-bro line (max ~12 words). distracted: a playful side-eye roast to get back to the bench. focused: encouragement. stuck: offer help, like "Want a spot?". idle/unknown: a light check-in.
+- mascot_line: one short in-character gym-bro line (max ~12 words). distracted: a playful side-eye roast to get back to the bench. focused: encouragement. stuck: offer help, like "Want a spot?". idle/unknown: a light check-in. Keep it generic like reason: NEVER mention names, usernames, message contents, email addresses, video titles, or anything specific seen on screen (say "videos", not what the video is about).
 - pose: "side-eye" for distracted, "spotting" for stuck, "flex" or "idle" for focused, "idle" for idle or unknown.
 - Never claim to see a problem or code that isn't actually on screen.`;
 
