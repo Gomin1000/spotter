@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { btnTag } from "./ui";
 
 /** Shows text in monospace with a Copy button (for chrome:// URLs, which websites can't link to). */
 export function CopyText({ text }: { text: string }) {
@@ -16,14 +17,10 @@ export function CopyText({ text }: { text: string }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-lg border border-[#24345f] bg-[#0a1430] py-1 pl-3 pr-1">
-      <code className="select-all font-mono text-sm text-[#e6ecff]">{text}</code>
-      <button
-        type="button"
-        onClick={copy}
-        className="rounded-md bg-[#2dd4bf]/15 px-2 py-1 text-xs font-semibold text-[#5eead4] transition hover:bg-[#2dd4bf]/25"
-      >
-        {copied ? "Copied!" : "Copy"}
+    <span className="inline-flex items-center gap-3 rounded-ui border-2 border-ink bg-paper py-1.5 pl-3 pr-1.5">
+      <code className="select-all font-mono text-sm font-bold text-ink">{text}</code>
+      <button type="button" onClick={copy} className={`${btnTag} bg-sun`}>
+        {copied ? "Copied" : "Copy"}
       </button>
     </span>
   );

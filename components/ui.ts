@@ -37,9 +37,3 @@ export const STATUS: Record<WatchStatus, { label: string; pill: string }> = {
   idle: { label: "Idle", pill: "bg-plate-grey text-ink" },
   unknown: { label: "Unsure", pill: "bg-plate-grey text-ink" },
 };
-
-// Used by the /install page, which keeps its own look for now.
-export const card =
-  "rounded-2xl border border-[#24345f] bg-[#111c3d] p-4 shadow-[0_6px_24px_rgba(0,0,0,0.35)]";
-export const cardTitle = "text-xs font-bold uppercase tracking-[0.16em] text-[#5eead4]";
-export const muted = "text-sm text-[#9aa0a6]";

@@ -246,7 +246,8 @@ export default function Home() {
 
       <main className="mx-auto flex w-full max-w-[400px] flex-col px-4 pb-12">
         {/* Pinned so side-eye, refusals and the loaded bar stay visible while scrolled down to the log. */}
-        <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-1 bg-paper px-4 pb-1 pt-4">
+        {/* One compact strip (under 180 px), solid so nothing shows behind or through it. */}
+        <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-1.5 border-b-4 border-ink bg-paper px-4 pb-1 pt-3">
           <Mascot pose={pose} line={line} />
           <Barbell loaded={steps.length} />
         </div>
