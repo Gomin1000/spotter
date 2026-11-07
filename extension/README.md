@@ -23,6 +23,10 @@ Open a problem (Codeforces, LeetCode, Kattis, or any page), open the side panel,
 
 plus the page URL and title. On LeetCode problem pages it waits up to 3 s for the description to render and also sends the problem title and difficulty (Easy / Medium / Hard). The app receives it as a `{ type: "spotter:problem", text, url, title, difficulty? }` message (see `lib/useExtensionBridge.ts`) and reads the problem.
 
+## Drag me back
+
+The extension remembers the tab "Read this page" read. When watch mode reaches the angry "distracted" stage, the app posts `{ type: "spotter:refocus" }` and the side panel switches back to that tab and focuses its window (or reopens the URL if the tab was closed). No extra permissions.
+
 ## Notes
 
 - App URLs are `PROD_URL` and `DEV_URL` at the top of `sidepanel.js`. The postMessage target origin follows whichever one is loaded.

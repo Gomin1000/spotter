@@ -51,10 +51,43 @@ function finish(text, kind) {
   button.disabled = false;
 }
 
-// The web app replies { type: "spotter:read-result", ok, title, message } after readProblem().
+// The tab "Read this page" last read: { tabId, windowId, url }. "Drag me back" returns here.
+let problemTab = null;
+
+// Watch mode's angry stage asks to switch back to the problem tab. Needs no extra permissions:
+// tabs.get/update, windows.update and tabs.create work without "tabs".
+async function refocusProblemTab() {
+  if (!problemTab) return;
+  const { tabId, windowId, url } = problemTab;
+  let tab = null;
+  try {
+    tab = await chrome.tabs.get(tabId);
+  } catch {
+    tab = null; // closed since it was read
+  }
+  try {
+    if (tab) {
+      await chrome.tabs.update(tab.id, { active: true });
+      await chrome.windows.update(tab.windowId ?? windowId, { focused: true });
+    } else if (url) {
+      const created = await chrome.tabs.create({ url, active: true });
+      problemTab = { tabId: created.id, windowId: created.windowId, url };
+      await chrome.windows.update(created.windowId, { focused: true });
+    }
+  } catch (error) {
+    console.error("Spotter: refocus failed", error);
+  }
+}
+
+// From the app: { type: "spotter:read-result", ok, title, message } after readProblem(),
+// and { type: "spotter:refocus" } when watch mode drags you back to the problem.
 window.addEventListener("message", (e) => {
   if (e.origin !== appOrigin || e.source !== frame.contentWindow) return;
   const d = e.data;
+  if (d && d.type === "spotter:refocus") {
+    void refocusProblemTab();
+    return;
+  }
   if (!d || d.type !== "spotter:read-result") return;
   if (d.ok) finish(`✓ Read: ${d.title || "problem"}`, "ok");
   else finish(`✗ ${d.message || "No problem found on that page."}`, "error");
@@ -141,6 +174,7 @@ button.addEventListener("click", async () => {
     });
     const data = result?.result;
     if (!data?.text) throw new Error("That page has no readable text.");
+    problemTab = { tabId: tab.id, windowId: tab.windowId, url: data.url };
     frame.contentWindow.postMessage(
       { type: "spotter:problem", text: data.text, url: data.url, title: data.title, difficulty: data.difficulty },
       appOrigin,

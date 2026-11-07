@@ -47,6 +47,22 @@ function isProblemMessage(data: unknown): data is ProblemMessage {
   return d.type === "spotter:problem" && typeof d.text === "string" && d.text.trim() !== "";
 }
 
+// Origin of the extension side panel hosting us, learned from its first message.
+let extensionOrigin: string | null = null;
+
+/**
+ * Asks the extension side panel to switch back to the problem tab ("drag me back").
+ * No-op when the app isn't running inside the extension.
+ */
+export function requestRefocus(): void {
+  if (typeof window === "undefined" || window.parent === window) return;
+  const ancestor = window.location.ancestorOrigins?.[0];
+  const origin =
+    extensionOrigin ?? (ancestor && ancestor.startsWith("chrome-extension://") ? ancestor : null);
+  if (!origin) return;
+  window.parent.postMessage({ type: "spotter:refocus" }, origin);
+}
+
 export function useExtensionBridge(handlers: ExtensionBridgeHandlers): void {
   const ref = useRef(handlers);
   useEffect(() => {
@@ -57,6 +73,7 @@ export function useExtensionBridge(handlers: ExtensionBridgeHandlers): void {
     async function onMessage(e: MessageEvent) {
       if (!e.origin.startsWith("chrome-extension://")) return;
       if (!isProblemMessage(e.data)) return;
+      extensionOrigin = e.origin;
       const page: ExtensionPage = {
         url: String(e.data.url ?? ""),
         title: String(e.data.title ?? ""),

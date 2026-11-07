@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { watch, type MascotPose, type WatchStatus } from "./api";
 import { captureVideoFrame } from "./image";
+import { requestRefocus } from "./useExtensionBridge";
 
 export const WATCH_INTERVAL_MS = 10_000;
 export const DEMO_INTERVAL_MS = 5_000;
@@ -20,6 +21,9 @@ export const DEMO_SUSPICIOUS_AFTER_MS = 5_000;
 /** Off task this long: "distracted" (no-free-reps). */
 export const DISTRACTED_AFTER_MS = 45_000;
 export const DEMO_DISTRACTED_AFTER_MS = 15_000;
+/** After reaching "distracted", wait this long, then drag the user back to the problem tab (extension only). */
+export const REFOCUS_DELAY_MS = 3_000;
+const REFOCUS_LINE = "That's it. Back to the bar.";
 function escalatedLine(ms: number): string {
   return `${formatDuration(ms)} off task? That's skipping leg day. Back to the bar.`;
 }
@@ -105,6 +109,8 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
   const lastProgressAtRef = useRef(0); // last time the screen showed progress
   const offeredRef = useRef(false); // already offered a hint in the current stuck stretch
   const distractedSinceRef = useRef<number | null>(null); // first "distracted" in the current stretch
+  const refocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refocusedRef = useRef(false); // already dragged back in the current stretch
   const demoRef = useRef(options.demoMode ?? false);
   const sessionRef = useRef(0); // bumps on start/stop so late responses are ignored
   const titleRef = useRef(options.problemTitle);
@@ -124,6 +130,9 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
     lastProgressAtRef.current = Date.now(); // starting (or stopping) resets the stuck clock
     offeredRef.current = false;
     distractedSinceRef.current = null;
+    if (refocusTimerRef.current) clearTimeout(refocusTimerRef.current);
+    refocusTimerRef.current = null;
+    refocusedRef.current = false;
   }, []);
 
   const stop = useCallback(() => {
@@ -157,7 +166,13 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
       // Distraction clock: starts on the first "distracted", cleared when back on task
       // (focused, stuck or idle). Failed or unknown checks leave it alone.
       if (res.ok && res.status === "distracted") distractedSinceRef.current ??= now;
-      else if (res.ok && res.status !== "unknown") distractedSinceRef.current = null;
+      else if (res.ok && res.status !== "unknown") {
+        // Back on task: end the stretch and cancel any pending drag-back.
+        distractedSinceRef.current = null;
+        if (refocusTimerRef.current) clearTimeout(refocusTimerRef.current);
+        refocusTimerRef.current = null;
+        refocusedRef.current = false;
+      }
 
       if (res.ok && res.status === "distracted") {
         setStatus("distracted");
@@ -166,8 +181,18 @@ export function useScreenWatcher(options: ScreenWatcherOptions = {}): ScreenWatc
         if (offFor >= (demo ? DEMO_DISTRACTED_AFTER_MS : DISTRACTED_AFTER_MS)) {
           setDisplayStatus("distracted");
           setReason(res.reason);
-          setMascotLine(escalatedLine(offFor));
+          setMascotLine(refocusedRef.current ? REFOCUS_LINE : escalatedLine(offFor));
           setPose("no-free-reps");
+          // Drag me back: 3 s after the angry stage, if still distracted, once per stretch.
+          if (!refocusedRef.current && refocusTimerRef.current === null) {
+            refocusTimerRef.current = setTimeout(() => {
+              refocusTimerRef.current = null;
+              if (session !== sessionRef.current || distractedSinceRef.current === null) return;
+              refocusedRef.current = true;
+              requestRefocus();
+              setMascotLine(REFOCUS_LINE);
+            }, REFOCUS_DELAY_MS);
+          }
         } else if (offFor >= (demo ? DEMO_SUSPICIOUS_AFTER_MS : SUSPICIOUS_AFTER_MS)) {
           setDisplayStatus("suspicious");
           setReason(res.reason);
