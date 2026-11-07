@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { MascotPose } from "@/lib/api";
 
 const POSES: Record<MascotPose, { name: string; cue: string; bg: string }> = {
@@ -10,8 +10,9 @@ const POSES: Record<MascotPose, { name: string; cue: string; bg: string }> = {
   "no-free-reps": { name: "No free reps", cue: "No free reps", bg: "#f6d8cc" },
 };
 
-/** Compact pose strip: a 96 px mascot tile, then the pose name, cue and current line. */
-export function Mascot({ pose, line }: { pose: MascotPose; line: string }) {
+/** Compact pose strip: a 96 px mascot tile, then the pose name, cue and current line.
+ *  `aside` sits at the right end of the pose-name row (kept no taller than the name). */
+export function Mascot({ pose, line, aside }: { pose: MascotPose; line: string; aside?: ReactNode }) {
   // Warm the cache so a pose change never shows an empty tile.
   useEffect(() => {
     for (const p of Object.keys(POSES)) new Image().src = `/mascot/${p}.png`;
@@ -39,7 +40,10 @@ export function Mascot({ pose, line }: { pose: MascotPose; line: string }) {
         />
       </div>
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-lg font-black uppercase leading-none tracking-tight">{info.name}</h2>
+        <div className="flex h-[18px] items-center gap-2">
+          <h2 className="min-w-0 flex-1 truncate text-lg font-black uppercase leading-none tracking-tight">{info.name}</h2>
+          {aside}
+        </div>
         <p className="mt-1 truncate font-mono text-[10px] font-bold uppercase tracking-widest text-slate">{info.cue}</p>
         <p
           aria-live="polite"

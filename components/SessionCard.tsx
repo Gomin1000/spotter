@@ -1,6 +1,9 @@
 "use client";
 import { OPEN_IN_TAB_MESSAGE, type ScreenWatcher } from "@/lib/useScreenWatcher";
-import { STATUS, btnSecondary, btnTag, divider, heading, label, sticker } from "./ui";
+import { STATUS, btnSecondary, btnTag, divider, heading, label, statusPill, sticker } from "./ui";
+
+/** DOM id of the watch card, so the sticky strip's status pill can scroll to it. */
+export const WATCH_CARD_ID = "watch-card";
 
 interface Props {
   watcher: ScreenWatcher;
@@ -11,8 +14,9 @@ interface Props {
 export function SessionCard({ watcher, canSpot, onAcceptSpot }: Props) {
   const status = watcher.status ? STATUS[watcher.status] : null;
 
+  // scroll-mt clears the sticky strip (under 180 px) when the strip's pill scrolls here.
   return (
-    <section className={`${sticker} flex flex-col gap-4 p-4`}>
+    <section id={WATCH_CARD_ID} className={`${sticker} flex scroll-mt-[196px] flex-col gap-4 p-4`}>
       <div>
         <p className={label}>Watch mode</p>
         <h2 className={`${heading} mt-1 text-xl leading-none`}>Keep me honest</h2>
@@ -37,11 +41,7 @@ export function SessionCard({ watcher, canSpot, onAcceptSpot }: Props) {
         {watcher.isWatching ? (
           <>
             {status ? (
-              <span
-                className={`inline-block rounded-full border-2 border-ink px-3 py-1 font-mono text-[11px] font-black uppercase tracking-widest ${status.pill}`}
-              >
-                {status.label}
-              </span>
+              <span className={`${statusPill} px-3 py-1 text-[11px] ${status.pill}`}>{status.label}</span>
             ) : (
               <p className={label}>First check coming up</p>
             )}

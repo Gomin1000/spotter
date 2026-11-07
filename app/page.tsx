@@ -18,7 +18,8 @@ import { Barbell } from "@/components/Barbell";
 import { HintLadder, type GivenHint } from "@/components/HintLadder";
 import { Mascot } from "@/components/Mascot";
 import { ProblemCard } from "@/components/ProblemCard";
-import { SessionCard } from "@/components/SessionCard";
+import { SessionCard, WATCH_CARD_ID } from "@/components/SessionCard";
+import { STATUS, statusPill } from "@/components/ui";
 import { ERROR_LINES, SOLVED_LINES } from "@/components/voice";
 
 const HELLO = "Spotter here. I spot you. I don't lift for you.";
@@ -227,6 +228,11 @@ export default function Home() {
   else if (solvedWith != null) pose = "flex";
   else if (hintBusy || watchingStatus === "stuck" || lastFromHint) pose = "spotting";
 
+  function scrollToWatchCard() {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById(WATCH_CARD_ID)?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  }
+
   return (
     <div className="min-h-screen w-full bg-paper text-ink">
       <header className="border-b-4 border-ink bg-mint">
@@ -248,7 +254,23 @@ export default function Home() {
         {/* Pinned so side-eye, refusals and the loaded bar stay visible while scrolled down to the log. */}
         {/* One compact strip (under 180 px), solid so nothing shows behind or through it. */}
         <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-1.5 border-b-4 border-ink bg-paper px-4 pb-1 pt-3">
-          <Mascot pose={pose} line={line} />
+          <Mascot
+            pose={pose}
+            line={line}
+            aside={
+              watchingStatus && (
+                <button
+                  type="button"
+                  title="Go to watch mode"
+                  aria-label={`Watch status: ${STATUS[watchingStatus].label}. Go to watch mode`}
+                  onClick={scrollToWatchCard}
+                  className={`${statusPill} shrink-0 px-2 py-0.5 text-[9px] leading-none transition-transform hover:-translate-y-0.5 ${STATUS[watchingStatus].pill}`}
+                >
+                  {STATUS[watchingStatus].label}
+                </button>
+              )
+            }
+          />
           <Barbell loaded={steps.length} />
         </div>
 

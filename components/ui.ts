@@ -30,6 +30,9 @@ export const STEP_LABEL: Record<Rung, string> = {
   4: "Pseudocode",
 };
 
+/** Base classes for a watch-status pill; add size classes and STATUS[s].pill. */
+export const statusPill = "inline-block rounded-full border-2 border-ink font-mono font-black uppercase tracking-widest";
+
 export const STATUS: Record<WatchStatus, { label: string; pill: string }> = {
   focused: { label: "Focused", pill: "bg-plate-green text-ink" },
   stuck: { label: "Stuck", pill: "bg-plate-yellow text-ink" },
