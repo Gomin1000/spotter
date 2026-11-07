@@ -1,6 +1,9 @@
 // Shared request/response types for Spotter. Owner: Gleb (@Gomin1000).
 // Post on the board before changing anything in this file.
 
+/** Official LeetCode difficulty label. */
+export type LeetCodeDifficulty = "Easy" | "Medium" | "Hard";
+
 export type MascotPose = "idle" | "spotting" | "side-eye" | "flex" | "no-free-reps";
 
 // ---------- Read problem ----------
@@ -13,6 +16,8 @@ export interface Problem {
   sample_output: string;
   /** Page the problem came from (set by useExtensionBridge). Used by /api/rating. */
   source_url?: string;
+  /** Official LeetCode difficulty, read from the page by the extension. Used by /api/rating. */
+  difficulty?: LeetCodeDifficulty;
 }
 
 /** Send exactly one of image_base64 (JPEG, max 768 px wide, no data: prefix) or text. */
@@ -83,8 +88,15 @@ export interface RatingResponse {
   ok: boolean;
   /** Codeforces-style rating (800-3500), or null if unknown. */
   rating: number | null;
-  /** "codeforces" = official rating from the CF API; "estimate" = Spotter's guess. */
-  source: "codeforces" | "estimate";
+  /**
+   * "codeforces" = official rating from the CF API; "estimate" = Spotter's guess;
+   * "leetcode" = official LeetCode difficulty in `difficulty`, with Spotter's Codeforces-style
+   * estimate in `rating` (may be null if the estimate failed).
+   */
+  source: "codeforces" | "estimate" | "leetcode";
+  /** Set when source is "leetcode". */
+  difficulty?: LeetCodeDifficulty;
+  /** Confidence of `rating` ("high" for an official CF rating). */
   confidence: "high" | "medium" | "low";
   mascot_line: string;
 }

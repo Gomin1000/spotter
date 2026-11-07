@@ -2,7 +2,7 @@
 // Receives problem text from the Spotter Chrome extension (extension/sidepanel.js)
 // and reads it with readProblem(). Only trusts chrome-extension:// senders.
 import { useEffect, useRef } from "react";
-import { readProblem, type ReadProblemResponse } from "./api";
+import { readProblem, type LeetCodeDifficulty, type ReadProblemResponse } from "./api";
 
 export interface ExtensionPage {
   url: string;
@@ -23,6 +23,14 @@ interface ProblemMessage {
   text: string;
   url?: string;
   title?: string;
+  /** LeetCode difficulty label read from the page, if any. */
+  difficulty?: string;
+}
+
+const DIFFICULTIES: readonly LeetCodeDifficulty[] = ["Easy", "Medium", "Hard"];
+
+function asDifficulty(value: unknown): LeetCodeDifficulty | undefined {
+  return DIFFICULTIES.find((d) => d === value);
 }
 
 /** Sent back to the extension after readProblem() finishes. */
@@ -64,6 +72,9 @@ export function useExtensionBridge(handlers: ExtensionBridgeHandlers): void {
         const res = await readProblem({ text: e.data.text.slice(0, 20000) });
         // Keep the page URL so /api/rating can look up the official Codeforces rating.
         if (res.problem && page.url) res.problem.source_url = page.url;
+        // Official LeetCode difficulty, for /api/rating.
+        const difficulty = asDifficulty(e.data.difficulty);
+        if (res.problem && difficulty) res.problem.difficulty = difficulty;
         ref.current.onResult(res, page);
         reply(
           res.found_problem && res.problem

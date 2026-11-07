@@ -1,4 +1,4 @@
-import type { Problem, RatingRequest, RatingResponse } from "@/lib/contract";
+import type { LeetCodeDifficulty, Problem, RatingRequest, RatingResponse } from "@/lib/contract";
 import { generateJson, ThinkingLevel } from "@/lib/gemini";
 
 // Allow slow Gemini calls on Vercel (seconds).
@@ -81,6 +81,25 @@ async function fetchCodeforcesRating(ref: CfProblemRef): Promise<number | null> 
   return map?.get(`${ref.contestId}${ref.index}`) ?? null;
 }
 
+// ---------- LeetCode ----------
+
+const LC_DIFFICULTIES: readonly LeetCodeDifficulty[] = ["Easy", "Medium", "Hard"];
+
+function isLeetCodeUrl(raw: string | undefined): boolean {
+  if (!raw) return false;
+  try {
+    return /(^|\.)leetcode\.(com|cn)$/i.test(new URL(raw).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Official LeetCode difficulty if this is a LeetCode problem with a known label, else null. */
+function leetCodeDifficulty(p: Problem): LeetCodeDifficulty | null {
+  if (!isLeetCodeUrl(p.source_url)) return null;
+  return LC_DIFFICULTIES.find((d) => d === p.difficulty) ?? null;
+}
+
 // ---------- Gemini estimate ----------
 
 const SYSTEM = `You estimate the difficulty of a competitive-programming problem as a Codeforces-style rating (800 = easiest Div. 2 A, 3500 = hardest).
@@ -111,6 +130,7 @@ function buildPrompt(p: Problem): string {
     p.constraints?.length ? `Constraints: ${p.constraints.join("; ")}` : "Constraints: none given",
     p.sample_input ? `Sample input:\n${p.sample_input.slice(0, 2000)}` : "",
     p.sample_output ? `Sample output:\n${p.sample_output.slice(0, 2000)}` : "",
+    p.difficulty ? `Official LeetCode difficulty: ${p.difficulty} (use it to calibrate).` : "",
     "",
     "Estimate its Codeforces rating.",
   ]
@@ -134,6 +154,16 @@ function mascotLine(rating: number, source: RatingResponse["source"]): string {
   if (rating < 2000) return `${est}${rating} lift. Now we're putting plates on.`;
   if (rating < 2500) return `${est}${rating} lift. Heavy. Brace your core.`;
   return `${est}${rating} lift. Max-out territory. I'm right here.`;
+}
+
+/** LeetCode difficulty without a Codeforces-style estimate (the estimate failed). */
+function leetCodeOnly(difficulty: LeetCodeDifficulty): RatingResponse {
+  const line: Record<LeetCodeDifficulty, string> = {
+    Easy: "LeetCode Easy. Warm-up weight, no excuses.",
+    Medium: "LeetCode Medium. Put some plates on.",
+    Hard: "LeetCode Hard. Brace your core.",
+  };
+  return { ok: true, rating: null, source: "leetcode", difficulty, confidence: "low", mascot_line: line[difficulty] };
 }
 
 function fail(mascot_line: string): Response {
@@ -166,6 +196,8 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  const lc = leetCodeDifficulty(p);
+
   try {
     const out = await generateJson<ModelEstimate>({
       label: "rating estimate",
@@ -175,20 +207,31 @@ export async function POST(request: Request): Promise<Response> {
       thinkingLevel: ThinkingLevel.MEDIUM,
     });
     if (typeof out.rating !== "number" || !Number.isFinite(out.rating)) {
-      return fail("Couldn't size up that weight. Try again.");
+      return lc ? Response.json(leetCodeOnly(lc)) : fail("Couldn't size up that weight. Try again.");
     }
     const rating = clampRating(out.rating);
     const confidence: Confidence = ["high", "medium", "low"].includes(out.confidence) ? out.confidence : "low";
-    const body: RatingResponse = {
-      ok: true,
-      rating,
-      source: "estimate",
-      confidence,
-      mascot_line: mascotLine(rating, "estimate"),
-    };
+    const body: RatingResponse = lc
+      ? {
+          ok: true,
+          rating,
+          source: "leetcode",
+          difficulty: lc,
+          confidence,
+          mascot_line: `LeetCode ${lc}. ${mascotLine(rating, "estimate")}`,
+        }
+      : {
+          ok: true,
+          rating,
+          source: "estimate",
+          confidence,
+          mascot_line: mascotLine(rating, "estimate"),
+        };
     return Response.json(body);
   } catch (e) {
     console.error("[rating] error:", e);
+    // The official LeetCode label is still worth showing without the estimate.
+    if (lc) return Response.json(leetCodeOnly(lc));
     return fail("Pulled a servo sizing that up. Try again in a sec.");
   }
 }
