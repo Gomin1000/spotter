@@ -17,7 +17,7 @@ After editing files here, click the reload icon on the Spotter card in `chrome:/
 
 Open a problem (Codeforces, LeetCode, Kattis, or any page), open the side panel, and click **Read this page**. It sends, in this order of preference:
 
-- the text you have selected, else
+- the text you have selected (not on LeetCode or Codeforces, where a selection is usually code in the editor), else
 - the problem statement (Codeforces `.problem-statement`, LeetCode `[data-track-load="description_content"]`, Kattis `.problembody`), else
 - the page's whole text (max 20,000 characters),
 

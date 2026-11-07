@@ -65,6 +65,7 @@ async function extractProblem(maxChars) {
   const LC_DESCRIPTION = '[data-track-load="description_content"]';
   const isLeetCode =
     /(^|\.)leetcode\.(com|cn)$/.test(location.hostname) && /^\/problems\/[^/]+/.test(location.pathname);
+  const isCodeforces = /(^|\.)codeforces\.(com|ml|net)$/.test(location.hostname);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const visibleText = (el) => (el && el.innerText ? el.innerText.trim() : "");
 
@@ -103,7 +104,9 @@ async function extractProblem(maxChars) {
     }
   }
 
-  const selected = String(window.getSelection() || "").trim();
+  // On LeetCode and Codeforces always read the statement: a selection there is usually
+  // code in the editor. Selected text is only used on other sites.
+  const selected = isLeetCode || isCodeforces ? "" : String(window.getSelection() || "").trim();
   let text = selected;
   if (!text) {
     const selectors = [

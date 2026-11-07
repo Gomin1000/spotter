@@ -49,6 +49,12 @@ export interface HintRequest {
   previous_hints: string[];
   code?: string;
   user_message?: string;
+  /**
+   * "hint" (default) = give rung `rung`. "check" = answer user_message about `code`
+   * (where it breaks, never the fix) without a new step; send the current rung
+   * (highest given, or 1), and the response echoes it.
+   */
+  mode?: "hint" | "check";
 }
 
 export interface HintResponse {
