@@ -12,9 +12,11 @@ export const metadata: Metadata = {
 const STEP_TAG = ["bg-plate-green text-ink", "bg-plate-yellow text-ink", "bg-plate-blue text-white", "bg-plate-red text-white"];
 const code = "rounded-ui border-2 border-ink bg-paper px-1 font-mono text-[13px] font-bold";
 
+/** One install step. The <li> is the card itself (border and offset shadow), so h-full plus a
+ *  shared min-height keeps all four the same height in the stretched grid. */
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
-    <li className={`${sticker} p-4`}>
+    <li className={`${sticker} flex h-full min-h-[248px] flex-col p-4`}>
       <div className="flex items-start gap-3">
         <span
           aria-hidden
@@ -144,7 +146,7 @@ export default function InstallPage() {
               Install in 1 minute
             </h2>
           </div>
-          <ol className="grid items-start gap-5 md:grid-cols-2">
+          <ol className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
             <Step n={1} title="Unzip">
               <p>
                 Unzip <code className={code}>spotter-extension.zip</code> into a folder you&apos;ll keep.
