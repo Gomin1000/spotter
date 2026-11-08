@@ -39,7 +39,15 @@ let replyTimer = null;
 
 // kind: "working" | "ok" | "error"
 function setStatus(text, kind = "working") {
-  status.textContent = text;
+  // Success keeps ink text with a small green check in front.
+  if (kind === "ok" && text.startsWith("✓")) {
+    const check = document.createElement("span");
+    check.className = "check";
+    check.textContent = "✓";
+    status.replaceChildren(check, text.slice(1));
+  } else {
+    status.textContent = text;
+  }
   status.title = text;
   status.className = kind;
 }
