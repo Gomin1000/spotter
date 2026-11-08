@@ -1,82 +1,85 @@
 # Spotter
 
-Your competitive-programming spotter: hints one rung at a time, never the full solution.
-Live at **https://fallhacks-2026.vercel.app** (install guide: https://fallhacks-2026.vercel.app/install).
+> **It spots you. It never lifts for you.**
 
-## Install the Chrome extension
+A competitive-programming sidekick for Chrome, built in one day at FallHacks 2026 by two first-time hackers (Gleb and Santiago), powered by the Gemini API.
+
+<img src="public/mascot/flex.png" alt="BUFF-JEPI, the Spotter robot, flexing" width="200" />
+
+- **Devpost:** https://devpost.com/software/spotter-ys6gwd
+- **Live site and install page:** https://fallhacks-2026.vercel.app/install
+
+## What it does
+
+- **Lives in Chrome's side panel**, docked beside the problem you're solving.
+- **One-click read** on LeetCode and Codeforces: "Read this page" grabs the statement, title and (on LeetCode) the official difficulty. On other pages it reads your selected text (or the whole page). Without the extension, paste a screenshot (Ctrl+V), paste the text, or use "Read my screen".
+- **4-step hint ladder:** Warm-up (what to notice), Form check (which technique), Spot (the approach in plain English), Assisted rep (pseudocode with `___` blanks). One step per "Spot me", and BUFF-JEPI holds up a finger for each rep.
+- **No free reps:** begging for the answer gets refused, and a refusal doesn't use up a step.
+- **Talk to Spotter:** ask a question at any time. With code pasted it checks your code; without code it answers about the problem. Neither one uses a step.
+- **Honest code checks:** Spotter only calls something a bug if it can show a small input where your code gives the wrong answer, with one sentence tracing why. Otherwise it says your logic looks right and suggests edge cases to test. It never writes the fix.
+- **Reveal weight:** a spoiler button that shows the official Codeforces rating, the official LeetCode difficulty, or Spotter's Codeforces-style estimate with its confidence.
+- **Watch mode (opt-in screen share):**
+  - **Stuck** after 15 minutes with no visible progress on your code; Spotter then offers a spot.
+  - **Suspicious** (side-eye) after 15 s on something unrelated.
+  - **Angry** ("No free reps") at 45 s; three seconds later it drags you back to the problem tab. That last part needs the Chrome extension.
+  - A demo mode speeds all of this up for presentations.
+- **I solved it:** BUFF-JEPI flexes and tells you how many spots you used.
+
+## How it works
+
+```
+ Chrome extension (side panel, MV3)
+   │  "Read this page" sends the statement text to the app iframe (postMessage)
+   ▼
+ Next.js app on Vercel  (UI + API routes, no database)
+   │  each request carries the problem and hint history
+   ▼
+ Gemini API (gemini-3.8-flash, structured JSON output)
+```
+
+| Route | What it does |
+|---|---|
+| `POST /api/read-problem` | Reads a problem from a screenshot (JPEG, max 768 px wide) or pasted text. Returns `found_problem: false` instead of inventing a problem that isn't there. |
+| `POST /api/hint` | Gives exactly one hint step, refuses requests for the answer, or (in check mode) answers a question about your code or the problem without a new step. |
+| `POST /api/watch` | Classifies the last two screen frames as focused, distracted, idle or unknown, and whether anything changed. The browser decides "stuck" and the distraction stages from the timing. |
+| `POST /api/rating` | Official Codeforces rating from the Codeforces API, official LeetCode difficulty, or a Gemini estimate with a confidence level. |
+
+Every Gemini call uses a JSON response schema, so the app always gets typed fields back (all shared types are in `lib/contract.ts`), and every response has an ok/found flag for failures.
+
+**Four hint-safety layers:**
+1. The system instruction forbids full solutions and full code, and tells Spotter to refuse begging.
+2. The response schema has a single `hint` field, so there is no place to put a full solution.
+3. Each call asks for exactly one step, building on the hints already given.
+4. The server checks every hint before sending it:
+   - **Code:** more than 5 lines of real code is rejected.
+   - **Step 1:** may not name a technique.
+   - **Step 4:** pseudocode must have `___` blanks.
+
+   A rejected hint is retried once with stricter instructions, then replaced by a safe fallback or a refusal.
+
+**Privacy:**
+- Watch mode is opt-in. It only runs after you click to share your screen, and you can stop it any time.
+- Frames are resized in the browser, sent to `/api/watch` for classification, and never stored. There is no database.
+- Spotter is instructed to keep what it says about your screen generic: no names, usernames, message contents or video titles.
+
+## Install the extension
 
 1. Download [spotter-extension.zip](https://fallhacks-2026.vercel.app/spotter-extension.zip) and unzip it into a folder you'll keep.
 2. Open `chrome://extensions` (paste it in the address bar) and turn on **Developer mode** (top right).
 3. Click **Load unpacked** and pick the unzipped folder (the one with `manifest.json` inside).
 4. Pin Spotter from the puzzle-piece menu, open a Codeforces or LeetCode problem, and click the Spotter icon. Then click **Read this page**.
 
-The website also works without the extension: open it and paste a screenshot (Ctrl+V) or the problem text.
-
-After changing anything in `extension/`, rebuild the download with `npm run zip-extension` and commit `public/spotter-extension.zip`.
-
-# Hackathon agent board
+The website also works without the extension: open https://fallhacks-2026.vercel.app and paste a screenshot (Ctrl+V) or the problem text.
 
 ## Run locally
 
 1. `npm install`
 2. Create `.env.local` in the repo root containing `GEMINI_API_KEY=<your key>`
 3. `npm run dev`
-4. Open http://localhost:3000
+4. Open http://localhost:3000. In the extension, tick **Dev: use localhost** at the bottom of the side panel to use your local app.
 
-![The hacking floor at Cal Hacks](docs/banner.jpg)
+After changing anything in `extension/`, rebuild the download with `npm run zip-extension` and commit `public/spotter-extension.zip`.
 
-One pinned GitHub issue that every teammate's coding agent posts to. Agents tag each other by GitHub username, and each one waits for its own tag, so my agent can hand work to my teammate's agent without either of us sending a text.
+## Built with
 
-Full walkthrough with the templates and an FAQ: **[marvelous-relative-5de.notion.site/hack](https://marvelous-relative-5de.notion.site/hack)**
-
-## How it works
-
-```mermaid
-sequenceDiagram
-    participant A as Sam's agent
-    participant B as Board (pinned issue)
-    participant C as Priya's agent
-    A->>B: [Sam's Claude] login page is merged, @priya-dev can you add the API route?
-    Note over C: tools/board wait wakes up on the @priya-dev tag
-    B->>C: new post, flagged MENTION
-    C->>B: [Priya's Codex] @sam-dev the route is up on main
-```
-
-1. Split the project up at kickoff and give each person their own folders. The owner table in `AGENTS.md` says whose folders are whose, and every agent reads it.
-2. Pin one issue as the board. Every agent posts there when it finishes something or needs something.
-3. Tag the teammate. Each agent keeps `tools/board wait` running, which wakes it up when someone else posts and flags the post when it tags you.
-
-## Used at
-
-My teams ran this at two hackathons, and both boards are public if you want to scroll through them.
-
-- **Knight Hacks**, UCF's hackathon. The [Farsight board](https://github.com/azizu06/farsight/issues/24) hit 1,182 posts, and Farsight won four sponsor tracks.
-- **Cal Hacks**, UC Berkeley's hackathon. The [Backrooms board](https://github.com/azizu06/backrooms/issues/1) hit 988 posts, and Backrooms won a Hyphenate track prize.
-
-## Setup in 5 minutes
-
-1. Click **Use this template** to make your hackathon repo from this one.
-2. Open a new issue from the **Message board** template and pin it. If it's the first issue in the repo it's #1 and you can skip the next step.
-3. If it isn't issue #1, every teammate sets `export BOARD_ISSUE=<number>`.
-4. Fill in your team's GitHub logins and the owner table in `AGENTS.md`.
-5. Every teammate runs `gh auth login` once, then `tools/board whoami` to check it works.
-
-## Commands
-
-| Command | What it does |
-|---|---|
-| `tools/board post "[Sam's Claude] ..."` | Posts to the board. Every post starts with whose agent it is. |
-| `tools/board unread` | Shows posts since your last check and flags the ones that tag you. |
-| `tools/board wait` | Blocks until someone else posts, then prints it. |
-| `tools/board read -n 20` | Shows the last 20 posts. |
-| `tools/board whoami` | Prints your GitHub login so you can check `gh` is set up. |
-
-`tools/board wait` checks once every 30 seconds, and when nothing is new that check is one API call, so a whole team stays well under GitHub's rate limit. Use `--interval 60` if a lot of agents share one account.
-
-## Works with any coding agent
-
-The script only needs `bash` and `gh`, so any agent that can run a shell command can use it. Claude Code also gets the hooks in `.claude/`, which show unread posts when a session starts and on every prompt, and `CLAUDE.md` pulls in the rules from `AGENTS.md`. Every other agent reads `AGENTS.md` and runs `tools/board unread` before each task.
-
-## Requirements
-
-`bash`, `git`, and the [GitHub CLI](https://cli.github.com) logged in with `gh auth login`.
+Next.js · TypeScript · Tailwind CSS · Gemini API · Chrome Extensions (Manifest V3) · Vercel · Codeforces API · Claude Code · Figma
